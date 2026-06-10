@@ -108,3 +108,5 @@ A arquitetura de dados já isola a origem (dados oficiais embarcados), então pl
 - [`docs/DESIGN-SYSTEM.md`](./docs/DESIGN-SYSTEM.md) — identidade visual, cores, tipografia, componentes e movimento.
 - [`docs/BACKEND.md`](./docs/BACKEND.md) — desenho da API NestJS, cache Redis e autenticação.
 - [`docs/prisma/schema.prisma`](./docs/prisma/schema.prisma) — modelo de dados relacional para PostgreSQL.
+
+<!-- deploy 1781111243 -->
