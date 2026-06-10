@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import type { MatchEvent, MatchResultMap } from "@/lib/types";
-import { supabasePublic } from "@/lib/supabase/server";
+import { supabaseRead } from "@/lib/supabase/server";
 import { EMPTY_OVERLAY as EMPTY, type LiveOverlay } from "@/lib/api/overlay";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const sb = supabasePublic();
+  const sb = supabaseRead();
   if (!sb) return NextResponse.json(EMPTY);
 
   try {

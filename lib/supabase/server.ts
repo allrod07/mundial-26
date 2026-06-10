@@ -15,6 +15,18 @@ export function supabasePublic(): SupabaseClient | null {
   return createClient(URL, ANON, { auth: { persistSession: false } });
 }
 
+/**
+ * Server-only read client. Prefers the anon key (least privilege); falls back
+ * to the service role when the anon key isn't configured. Used by /api/results,
+ * which only ever returns public match data (never the key) to clients.
+ */
+export function supabaseRead(): SupabaseClient | null {
+  if (!URL) return null;
+  const key = ANON || SERVICE;
+  if (!key) return null;
+  return createClient(URL, key, { auth: { persistSession: false } });
+}
+
 /** Privileged client (service role) for the sync job — server only, bypasses RLS. */
 export function supabaseAdmin(): SupabaseClient {
   if (!URL || !SERVICE) throw new Error("Supabase service role não configurado.");

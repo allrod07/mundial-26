@@ -16,7 +16,11 @@
       "mcp__10d557d7-7929-4c57-a0e0-3c73823cedbf__list_deployments",
       "Bash(curl -sS --ssl-no-revoke -m 30 -X POST \"https://api.vercel.com/v1/integrations/deploy/prj_EdRxDNTox3v0vjVv99a1DO9KAvX9/4Cr0sfmp0v\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
       "WebFetch(domain:mundial-26-delta.vercel.app)",
-      "mcp__10d557d7-7929-4c57-a0e0-3c73823cedbf__get_deployment"
+      "mcp__10d557d7-7929-4c57-a0e0-3c73823cedbf__get_deployment",
+      "mcp__db027261-b347-43e4-bcb9-55696270c33d__execute_sql",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main)"
     ]
   }
 }
