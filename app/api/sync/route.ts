@@ -19,13 +19,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 function authorized(req: Request): boolean {
-  const secret = process.env.SYNC_SECRET;
-  if (!secret) return true; // se não definido, libera (dev) — recomenda-se definir
+  // aceita o SYNC_SECRET (chamadas manuais) e o CRON_SECRET (Vercel Cron injeta
+  // automaticamente como Authorization: Bearer <CRON_SECRET>)
+  const secrets = [process.env.SYNC_SECRET, process.env.CRON_SECRET].filter(Boolean) as string[];
+  if (secrets.length === 0) return true; // nenhum definido → libera (dev)
   const url = new URL(req.url);
   const got =
     req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
-    url.searchParams.get("secret");
-  return got === secret;
+    url.searchParams.get("secret") ||
+    "";
+  return secrets.includes(got);
 }
 
 function num(v: unknown): number {

@@ -9,7 +9,10 @@
       "Bash(gh --version)",
       "Bash(gh auth *)",
       "mcp__db027261-b347-43e4-bcb9-55696270c33d__list_organizations",
-      "mcp__10d557d7-7929-4c57-a0e0-3c73823cedbf__list_teams"
+      "mcp__10d557d7-7929-4c57-a0e0-3c73823cedbf__list_teams",
+      "mcp__db027261-b347-43e4-bcb9-55696270c33d__list_projects",
+      "mcp__db027261-b347-43e4-bcb9-55696270c33d__get_cost",
+      "mcp__db027261-b347-43e4-bcb9-55696270c33d__confirm_cost"
     ]
   }
 }
