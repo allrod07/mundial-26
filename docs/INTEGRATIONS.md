@@ -53,6 +53,15 @@ Agende de tempos em tempos (durante a Copa, a cada poucos minutos) com **Vercel 
 
 `GET /api/results` lê o Supabase e devolve `{ source, results, events, stats }`. O `TournamentProvider` aplica os resultados reais como base (`fabricate:false` — sem clock de demonstração) e expõe `dataSource: "live"`. Páginas de partida usam eventos/estatísticas reais quando presentes.
 
+## 6. Painel /admin (preenchimento manual)
+
+Alternativa (ou complemento) à API: a página **`/admin`** permite digitar os resultados, gols/assistências e cartões **à mão**, gravando direto no Supabase. Os dados aparecem para **todos** os visitantes e o site entra em modo **AO VIVO** — sem depender de nenhuma API.
+
+- Acesse `/<seu-app>/admin` e entre com a senha (**`ADMIN_PASSWORD`**, ou o `SYNC_SECRET` se não definir uma).
+- A escrita usa a rota protegida `POST /api/matches` (service role) — portanto exige a **`SUPABASE_SERVICE_ROLE_KEY`** definida.
+- Preencha os 6 jogos de cada grupo; ao completar a fase de grupos, o mata-mata resolve os times sozinho e você preenche os confrontos.
+- Combina perfeitamente com a API: o que a fonte automática não trouxer (ex.: posse, escalações), você completa manualmente.
+
 ## 5. Deploy (Vercel + GitHub)
 
 1. Suba o repositório no GitHub.
