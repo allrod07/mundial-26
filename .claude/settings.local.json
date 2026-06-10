@@ -20,7 +20,8 @@
       "mcp__db027261-b347-43e4-bcb9-55696270c33d__execute_sql",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main)"
+      "Bash(GIT_TERMINAL_PROMPT=0 timeout 90 git push origin main)",
+      "Bash(curl -sS --ssl-no-revoke -m 25 \"https://mundial-26-delta.vercel.app/api/results?nocache=$\\(date +%s\\)\" -w \"\\\\nHTTP %{http_code}\\\\n\")"
     ]
   }
 }

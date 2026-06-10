@@ -22,7 +22,8 @@ export function supabasePublic(): SupabaseClient | null {
  */
 export function supabaseRead(): SupabaseClient | null {
   if (!URL) return null;
-  const key = ANON || SERVICE;
+  // prefer the service role (proven to work server-side); anon as fallback.
+  const key = SERVICE || ANON;
   if (!key) return null;
   return createClient(URL, key, { auth: { persistSession: false } });
 }
