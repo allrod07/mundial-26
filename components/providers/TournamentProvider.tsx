@@ -86,7 +86,11 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       // live results form the base; user overrides (simulation) layer on top
       return buildTournament({ ...live!.results, ...overrides }, { fabricate: false });
     }
-    return Object.keys(overrides).length ? buildTournament(overrides) : BASE_TOURNAMENT;
+    // No live data: show the real schedule with blank results until they're
+    // filled in via /admin (live) or the user simulates. Never fabricate scores.
+    return Object.keys(overrides).length
+      ? buildTournament(overrides, { fabricate: false })
+      : BASE_TOURNAMENT;
   }, [overrides, isLive, live]);
 
   const value = useMemo<TournamentCtx>(

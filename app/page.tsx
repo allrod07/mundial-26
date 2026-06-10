@@ -8,7 +8,6 @@ import {
   MapPin, BarChart3, Sparkles, Flame, ListOrdered, TrendingUp,
 } from "lucide-react";
 import { useTournament } from "@/components/providers/TournamentProvider";
-import { NOW } from "@/lib/data/schedule";
 import { TEAMS, GROUPS } from "@/lib/data/teams";
 import { MatchCard } from "@/components/match/MatchCard";
 import { GroupTable } from "@/components/standings/GroupTable";
@@ -24,7 +23,6 @@ import { fmtDay, fmtTime } from "@/lib/format";
 
 export default function HomePage() {
   const { tournament } = useTournament();
-  const now = NOW.getTime();
 
   const { live, upcoming, recent, nextMatch, totalGoals, played } = useMemo(() => {
     const ms = tournament.matches;
