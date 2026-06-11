@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
+import { matchLockEpoch, GLOBAL_LOCK_EPOCH, isLocked } from "@/lib/engine/pool";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,8 @@ export async function POST(req: Request) {
     if (op === "predictions") {
       const participant_id = String(b.participantId ?? "");
       if (!participant_id) return NextResponse.json({ error: "participantId ausente" }, { status: 400 });
+      if (isLocked(GLOBAL_LOCK_EPOCH))
+        return NextResponse.json({ error: "Apostas encerradas (passou de 1h antes do 1º jogo do Brasil)." }, { status: 403 });
       const { error } = await sb.from("pool_predictions").upsert(
         {
           participant_id,
@@ -65,6 +68,8 @@ export async function POST(req: Request) {
       const participant_id = String(b.participantId ?? "");
       const match_id = String(b.matchId ?? "");
       if (!participant_id || !match_id) return NextResponse.json({ error: "dados incompletos" }, { status: 400 });
+      if (isLocked(matchLockEpoch(match_id)))
+        return NextResponse.json({ error: "Palpite encerrado (falta menos de 1h para o jogo do Brasil)." }, { status: 403 });
       const { error } = await sb.from("pool_match_predictions").upsert(
         { participant_id, match_id, home_goals: Number(b.homeGoals ?? 0), away_goals: Number(b.awayGoals ?? 0), updated_at: now },
         { onConflict: "participant_id,match_id" },

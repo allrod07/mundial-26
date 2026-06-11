@@ -2,6 +2,8 @@ import type { Match } from "@/lib/types";
 import type { ResolvedTournament } from "@/lib/engine/tournament";
 import { winnerOf, loserOf } from "@/lib/engine/simulate";
 import { TEAM_MAP } from "@/lib/data/teams";
+import { BASE_MATCHES } from "@/lib/data/schedule";
+import { kickoffEpoch } from "@/lib/format";
 
 // ── Bolão da Família — motor de pontuação ─────────────────────────────────────
 // Tudo é calculado contra os RESULTADOS REAIS (árvore `tournament`, nunca o
@@ -40,6 +42,29 @@ const STAGE_FROM_KO: Record<string, BrazilStage> = {
   Quartas: "qf",
   Semifinal: "sf",
 };
+
+// ── Travas das apostas (1h antes de cada jogo do Brasil) ─────────────────────
+export const LOCK_MS = 60 * 60 * 1000;
+const MATCH_BY_ID = new Map(BASE_MATCHES.map((m) => [m.id, m]));
+
+/** Instante (epoch ms) em que o palpite de um jogo trava: 1h antes do pontapé. */
+export function matchLockEpoch(matchId: string): number | null {
+  const m = MATCH_BY_ID.get(matchId);
+  return m ? kickoffEpoch(m.date, m.cityId) - LOCK_MS : null;
+}
+
+/** Trava das apostas pré-Copa (campeão, fase, grupo): 1h antes do 1º jogo do Brasil. */
+export const GLOBAL_LOCK_EPOCH: number | null = (() => {
+  const firsts = BASE_MATCHES
+    .filter((m) => m.homeCode === BRAZIL || m.awayCode === BRAZIL)
+    .map((m) => kickoffEpoch(m.date, m.cityId))
+    .sort((a, b) => a - b);
+  return firsts.length ? firsts[0] - LOCK_MS : null;
+})();
+
+export function isLocked(epoch: number | null, now: number = Date.now()): boolean {
+  return epoch != null && now >= epoch;
+}
 
 // ── Tipos de dados (vêm do Supabase via /api/pool) ───────────────────────────
 export interface PoolParticipant {
