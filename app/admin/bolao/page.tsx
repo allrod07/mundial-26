@@ -24,10 +24,32 @@ export default function PoolAdminPage() {
   const [input, setInput] = useState("");
   const [data, setData] = useState<PoolData>(EMPTY);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [authError, setAuthError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function verify(pw: string): Promise<{ ok: boolean; msg?: string }> {
+    try {
+      const res = await fetch("/api/pool/admin", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${pw}` },
+        body: JSON.stringify({ op: "ping" }),
+      });
+      if (res.ok) return { ok: true };
+      const d = await res.json().catch(() => ({}));
+      return { ok: false, msg: d.error || `HTTP ${res.status}` };
+    } catch { return { ok: false, msg: "Erro de conexão." }; }
+  }
 
   useEffect(() => {
     const saved = typeof window !== "undefined" ? sessionStorage.getItem("m26:admin") : null;
-    if (saved) { setPassword(saved); setAuthed(true); }
+    if (!saved) { setChecking(false); return; }
+    verify(saved).then((r) => {
+      if (r.ok) { setPassword(saved); setAuthed(true); }
+      else { try { sessionStorage.removeItem("m26:admin"); } catch {} setAuthError(r.msg ?? ""); }
+      setChecking(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -49,31 +71,46 @@ export default function PoolAdminPage() {
     return d;
   };
 
-  const addParticipant = async (name: string, emoji: string) => {
-    const d = await post({ op: "participant", name, emoji, paid: true });
-    setData((s) => ({ ...s, participants: [...s.participants, { id: d.id, name, emoji, paid: true }] }));
+  const addParticipant = async (name: string, emoji: string, paid: boolean) => {
+    setError("");
+    try {
+      const d = await post({ op: "participant", name, emoji, paid });
+      setData((s) => ({ ...s, participants: [...s.participants, { id: d.id, name, emoji, paid }] }));
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); throw e; }
   };
   const togglePaid = async (p: PoolParticipant) => {
-    await post({ op: "participant", id: p.id, name: p.name, emoji: p.emoji, paid: !p.paid });
-    setData((s) => ({ ...s, participants: s.participants.map((x) => (x.id === p.id ? { ...x, paid: !p.paid } : x)) }));
+    setError("");
+    try {
+      await post({ op: "participant", id: p.id, name: p.name, emoji: p.emoji, paid: !p.paid });
+      setData((s) => ({ ...s, participants: s.participants.map((x) => (x.id === p.id ? { ...x, paid: !p.paid } : x)) }));
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
   const removeParticipant = async (id: string) => {
-    const res = await fetch(`/api/pool/admin?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: { authorization: `Bearer ${password}` } });
-    if (!res.ok) return;
-    setData((s) => {
-      const participants = s.participants.filter((p) => p.id !== id);
-      const predictions = { ...s.predictions }; delete predictions[id];
-      const matchPredictions = { ...s.matchPredictions }; delete matchPredictions[id];
-      return { participants, predictions, matchPredictions };
-    });
+    setError("");
+    try {
+      const res = await fetch(`/api/pool/admin?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: { authorization: `Bearer ${password}` } });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+      setData((s) => {
+        const participants = s.participants.filter((p) => p.id !== id);
+        const predictions = { ...s.predictions }; delete predictions[id];
+        const matchPredictions = { ...s.matchPredictions }; delete matchPredictions[id];
+        return { participants, predictions, matchPredictions };
+      });
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
   const savePredictions = async (id: string, pred: PoolPrediction) => {
-    await post({ op: "predictions", ...pred, participantId: id });
-    setData((s) => ({ ...s, predictions: { ...s.predictions, [id]: { ...pred, participantId: id } } }));
+    setError("");
+    try {
+      await post({ op: "predictions", ...pred, participantId: id });
+      setData((s) => ({ ...s, predictions: { ...s.predictions, [id]: { ...pred, participantId: id } } }));
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); throw e; }
   };
   const saveMatch = async (id: string, matchId: string, h: number, a: number) => {
-    await post({ op: "matchPrediction", participantId: id, matchId, homeGoals: h, awayGoals: a });
-    setData((s) => ({ ...s, matchPredictions: { ...s.matchPredictions, [id]: { ...(s.matchPredictions[id] ?? {}), [matchId]: { homeGoals: h, awayGoals: a } } } }));
+    setError("");
+    try {
+      await post({ op: "matchPrediction", participantId: id, matchId, homeGoals: h, awayGoals: a });
+      setData((s) => ({ ...s, matchPredictions: { ...s.matchPredictions, [id]: { ...(s.matchPredictions[id] ?? {}), [matchId]: { homeGoals: h, awayGoals: a } } } }));
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); throw e; }
   };
 
   if (!authed) {
@@ -81,14 +118,29 @@ export default function PoolAdminPage() {
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
         <span className="grid h-14 w-14 place-items-center rounded-2xl gradient-pitch text-white shadow-glow"><Lock size={26} /></span>
         <h1 className="mt-5 text-2xl font-extrabold">Admin do Bolão</h1>
-        <p className="mt-2 text-sm text-ink-400">Digite a senha do painel (<code>ADMIN_PASSWORD</code> ou <code>SYNC_SECRET</code>).</p>
-        <form
-          onSubmit={(e) => { e.preventDefault(); if (!input.trim()) return; setPassword(input.trim()); setAuthed(true); try { sessionStorage.setItem("m26:admin", input.trim()); } catch {} }}
-          className="mt-6 flex w-full gap-2"
-        >
-          <input type="password" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Senha" className="flex-1 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 text-sm outline-none focus:border-pitch-500" />
-          <button className="rounded-full gradient-pitch px-5 py-3 text-sm font-bold text-white">Entrar</button>
-        </form>
+        <p className="mt-2 text-sm text-ink-400">Digite a senha do painel (a mesma do <code>/admin</code> — valor de <code>ADMIN_PASSWORD</code> ou <code>SYNC_SECRET</code>).</p>
+        {checking ? (
+          <div className="mt-6 flex items-center gap-2 text-sm text-ink-400"><Loader2 size={16} className="animate-spin" /> verificando…</div>
+        ) : (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const pw = input.trim(); if (!pw) return;
+              setAuthError(""); setBusy(true);
+              const r = await verify(pw);
+              setBusy(false);
+              if (!r.ok) { setAuthError(r.msg ?? "Senha incorreta."); return; }
+              setPassword(pw); setAuthed(true); try { sessionStorage.setItem("m26:admin", pw); } catch {}
+            }}
+            className="mt-6 flex w-full flex-col gap-2"
+          >
+            <div className="flex w-full gap-2">
+              <input type="password" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Senha" className="flex-1 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 text-sm outline-none focus:border-pitch-500" />
+              <button disabled={busy} className="inline-flex items-center gap-1.5 rounded-full gradient-pitch px-5 py-3 text-sm font-bold text-white disabled:opacity-60">{busy ? <Loader2 size={15} className="animate-spin" /> : null} Entrar</button>
+            </div>
+            {authError && <span className="text-sm font-semibold text-red-500">⚠️ {authError}</span>}
+          </form>
+        )}
       </div>
     );
   }
@@ -101,12 +153,15 @@ export default function PoolAdminPage() {
         title="Bolão da Família — admin"
         description="Cadastre os participantes (que pagaram a entrada) e lance os palpites de cada um."
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link href="/bolao" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-2 text-sm font-bold text-ink-500 hover:text-pitch-600"><Trophy size={15} /> Ver bolão</Link>
             <Link href="/admin" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-2 text-sm font-bold text-ink-500 hover:text-pitch-600"><ArrowLeft size={15} /> Resultados</Link>
+            <button onClick={() => { setAuthed(false); setPassword(""); try { sessionStorage.removeItem("m26:admin"); } catch {} }} className="rounded-full border border-[var(--border)] px-3 py-2 text-sm font-bold text-ink-500 hover:text-red-500">Sair</button>
           </div>
         }
       />
+
+      {error && <div className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-300">⚠️ {error}</div>}
 
       <AddForm onAdd={addParticipant} />
 
@@ -134,20 +189,24 @@ export default function PoolAdminPage() {
   );
 }
 
-function AddForm({ onAdd }: { onAdd: (name: string, emoji: string) => Promise<void> }) {
+function AddForm({ onAdd }: { onAdd: (name: string, emoji: string, paid: boolean) => Promise<void> }) {
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("👤");
+  const [paid, setPaid] = useState(true);
   const [saving, setSaving] = useState(false);
   const EMOJIS = ["👤", "🧔", "👩", "👧", "👦", "👴", "👵", "🧑", "🤴", "👸", "🦁", "🐯", "🐶", "🐱", "⚽", "🔥"];
   return (
     <form
-      onSubmit={async (e) => { e.preventDefault(); if (!name.trim()) return; setSaving(true); try { await onAdd(name.trim(), emoji); setName(""); } finally { setSaving(false); } }}
+      onSubmit={async (e) => { e.preventDefault(); const n = name.trim(); if (!n) return; setSaving(true); try { await onAdd(n, emoji, paid); setName(""); } catch { /* erro no banner */ } finally { setSaving(false); } }}
       className="surface mt-4 flex flex-wrap items-center gap-2 rounded-2xl p-3"
     >
-      <select value={emoji} onChange={(e) => setEmoji(e.target.value)} className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-2 text-lg">
+      <select value={emoji} onChange={(e) => setEmoji(e.target.value)} className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-2 text-lg" aria-label="Emoji">
         {EMOJIS.map((e) => <option key={e} value={e}>{e}</option>)}
       </select>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do participante" className="min-w-[12rem] flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-pitch-500" />
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do participante" className="min-w-[10rem] flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-pitch-500" />
+      <button type="button" onClick={() => setPaid((v) => !v)} title="Marcar se o participante pagou a entrada" className={`rounded-lg px-3 py-2 text-sm font-bold transition-colors ${paid ? "bg-pitch-500/15 text-pitch-600 dark:text-pitch-300" : "bg-red-500/15 text-red-500"}`}>
+        {paid ? "Pago ✓" : "Não pago"}
+      </button>
       <button disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
         {saving ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />} Adicionar
       </button>

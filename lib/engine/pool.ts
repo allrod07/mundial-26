@@ -10,14 +10,18 @@ import { TEAM_MAP } from "@/lib/data/teams";
 
 export const BRAZIL = "BRA";
 
-export type GroupFinish = "1" | "2" | "out";
+export type GroupFinish = "1" | "2" | "3q" | "out";
 export type BrazilStage = "grupos" | "r32" | "r16" | "qf" | "sf" | "vice" | "campeao";
 
 export const GROUP_FINISH_OPTIONS: { value: GroupFinish; label: string }[] = [
   { value: "1", label: "1º lugar do grupo" },
   { value: "2", label: "2º lugar do grupo" },
+  { value: "3q", label: "3º lugar (classificado entre os melhores 3os)" },
   { value: "out", label: "Eliminado na fase de grupos" },
 ];
+export const GROUP_FINISH_LABEL: Record<GroupFinish, string> = {
+  "1": "1º lugar", "2": "2º lugar", "3q": "3º (classificado)", out: "Eliminado",
+};
 
 export const STAGE_OPTIONS: { value: BrazilStage; label: string; short: string }[] = [
   { value: "grupos", label: "Eliminado na fase de grupos", short: "Fase de grupos" },
@@ -62,11 +66,13 @@ export interface PoolData {
 export interface BrazilFacts {
   group: string;
   matches: Match[]; // todos os jogos do Brasil já definidos, em ordem cronológica
-  groupComplete: boolean;
+  groupComplete: boolean; // o grupo do Brasil terminou
+  allGroupsComplete: boolean; // toda a fase de grupos terminou (define melhor 3º)
   groupRank?: number;
   groupPoints?: number;
   advanced: boolean;
   eliminatedInGroups: boolean;
+  actualGroupFinish?: GroupFinish; // 1 | 2 | 3q | out, quando já resolvido
   stageReached?: BrazilStage;
   champion?: string;
   vice?: string;
@@ -84,8 +90,21 @@ export function brazilFacts(t: ResolvedTournament): BrazilFacts {
   const rows = t.standings[group] ?? [];
   const braRow = rows.find((r) => r.teamCode === BRAZIL);
   const groupComplete = t.groupDone[group] ?? false;
+  const allGroupsComplete = t.groupComplete;
+  // O Brasil avançou se aparece em algum jogo de mata-mata (só resolve quando
+  // toda a fase de grupos termina e os melhores 3os são definidos).
   const advanced = t.matches.some((m) => m.stage !== "Grupos" && (m.homeCode === BRAZIL || m.awayCode === BRAZIL));
-  const eliminatedInGroups = groupComplete && !advanced;
+  const eliminatedInGroups = allGroupsComplete && !advanced;
+
+  // Colocação real no grupo: 1º/2º assim que o grupo do Brasil termina; para 3º,
+  // só dá para saber se classificou (melhor 3º) ou não quando TODA a fase acaba.
+  let actualGroupFinish: GroupFinish | undefined;
+  if (groupComplete && braRow) {
+    if (braRow.rank === 1) actualGroupFinish = "1";
+    else if (braRow.rank === 2) actualGroupFinish = "2";
+    else if (braRow.rank >= 4) actualGroupFinish = "out";
+    else if (allGroupsComplete) actualGroupFinish = advanced ? "3q" : "out";
+  }
 
   const groupMatches = matches.filter((m) => m.stage === "Grupos");
   const lastGroupDate = groupMatches.length ? Math.max(...groupMatches.map((m) => +new Date(m.date))) : undefined;
@@ -117,9 +136,9 @@ export function brazilFacts(t: ResolvedTournament): BrazilFacts {
   }
 
   return {
-    group, matches, groupComplete,
+    group, matches, groupComplete, allGroupsComplete,
     groupRank: braRow?.rank, groupPoints: braRow?.points,
-    advanced, eliminatedInGroups, stageReached, champion, vice,
+    advanced, eliminatedInGroups, actualGroupFinish, stageReached, champion, vice,
     lastGroupDate, stageResolvedDate, finalDate,
   };
 }
@@ -180,8 +199,8 @@ function scoreOne(
     const exact = mp.homeGoals === rh && mp.awayGoals === ra;
     const result = Math.sign(mp.homeGoals - mp.awayGoals) === Math.sign(rh - ra);
     if (exact) {
-      points += 10; breakdown.matches += 10; exactCount++; resultCount++; brazilHits++; overallHits++;
-      seq.push(true); matchDetails.push({ match: m, pred: mp, pts: 10, kind: "exact" });
+      points += 5; breakdown.matches += 5; exactCount++; resultCount++; brazilHits++; overallHits++;
+      seq.push(true); matchDetails.push({ match: m, pred: mp, pts: 5, kind: "exact" });
     } else if (result) {
       points += 3; breakdown.matches += 3; resultCount++; brazilHits++; overallHits++;
       seq.push(true); matchDetails.push({ match: m, pred: mp, pts: 3, kind: "result" });
@@ -191,12 +210,10 @@ function scoreOne(
   }
 
   const groupResolved = facts.groupComplete && facts.lastGroupDate != null && facts.lastGroupDate <= cutoff;
-  if (groupResolved && pred?.brazilGroupFinish) {
-    const ok =
-      (pred.brazilGroupFinish === "1" && facts.groupRank === 1) ||
-      (pred.brazilGroupFinish === "2" && facts.groupRank === 2) ||
-      (pred.brazilGroupFinish === "out" && facts.eliminatedInGroups);
-    if (ok) { points += 10; breakdown.groupFinish = 10; brazilHits++; overallHits++; }
+  if (groupResolved && pred?.brazilGroupFinish && facts.actualGroupFinish) {
+    if (pred.brazilGroupFinish === facts.actualGroupFinish) {
+      points += 10; breakdown.groupFinish = 10; brazilHits++; overallHits++;
+    }
   }
   if (groupResolved && pred?.brazilGroupPoints != null && facts.groupPoints != null) {
     const diff = Math.abs(pred.brazilGroupPoints - facts.groupPoints);
