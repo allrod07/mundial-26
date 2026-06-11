@@ -19,7 +19,7 @@ import { Badge, LiveBadge } from "@/components/ui/Badge";
 import { Flag } from "@/components/ui/Flag";
 import { Reveal, Stagger, StaggerItem } from "@/components/ui/Reveal";
 import { CountUp } from "@/components/ui/CountUp";
-import { fmtDay, fmtKickoff } from "@/lib/format";
+import { fmtDay, fmtKickoff, kickoffEpoch } from "@/lib/format";
 import { useTz } from "@/store/useTimezone";
 
 export default function HomePage() {
@@ -128,14 +128,14 @@ export default function HomePage() {
                   Próxima partida
                 </div>
                 <div className="mb-4 text-sm text-white/80">
-                  {fmtDay(nextMatch.date)} · {fmtKickoff(nextMatch.date, nextMatch.cityId, tz)}
+                  {fmtDay(nextMatch.date)} · {fmtKickoff(nextMatch.date, nextMatch.cityId, tz)} <span className="text-white/50">(Brasília)</span>
                 </div>
                 <HeroMatch
                   matchCodes={[nextMatch.homeCode, nextMatch.awayCode]}
                   labels={[nextMatch.homeLabel, nextMatch.awayLabel]}
                 />
                 <div className="mt-5 border-t border-white/15 pt-4">
-                  <Countdown targetIso={nextMatch.date} />
+                  <Countdown targetMs={kickoffEpoch(nextMatch.date, nextMatch.cityId)} />
                 </div>
               </div>
             )}

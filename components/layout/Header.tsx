@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { GlobalSearch } from "./GlobalSearch";
 import { DataSourceBadge } from "./DataSourceBadge";
-import { TimezoneToggle } from "./TimezoneToggle";
 
 const NAV: { href: string; label: string; admin?: boolean }[] = [
   { href: "/", label: "Início" },
@@ -73,7 +72,6 @@ export function Header() {
 
         <div className="ml-auto flex items-center gap-2 xl:ml-0">
           <DataSourceBadge />
-          <TimezoneToggle />
           <GlobalSearch />
           <ThemeToggle />
           <button

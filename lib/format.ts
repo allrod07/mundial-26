@@ -40,6 +40,16 @@ export function fmtKickoff(iso: string, cityId: string, tz: "local" | "brt" = "l
   return dayShift > 0 ? `${t} (+1)` : t;
 }
 
+/**
+ * Instante REAL do pontapé inicial em epoch (ms, UTC). O ISO guarda o horário
+ * local da sede (rotulado como Z), então o instante real = local + offset da
+ * sede; como Brasília é UTC−3, esse offset é (BRT_DELTA + 3) horas. Usado pela
+ * contagem regressiva para acertar o tempo que falta, independente do fuso.
+ */
+export function kickoffEpoch(iso: string, cityId: string): number {
+  return Date.parse(iso) + ((BRT_DELTA[cityId] ?? 0) + 3) * 3_600_000;
+}
+
 export function fmtDay(iso: string): string {
   const d = new Date(iso);
   return `${WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
