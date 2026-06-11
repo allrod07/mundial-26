@@ -12,17 +12,16 @@ function diff(target: number, now: number) {
   };
 }
 
-/** Counts down to `targetIso` in real time (client-only to avoid hydration drift). */
-export function Countdown({ targetIso }: { targetIso: string }) {
-  const target = new Date(targetIso).getTime();
+/** Counts down to the real kickoff instant (epoch ms), in real time. */
+export function Countdown({ targetMs }: { targetMs: number }) {
   const [parts, setParts] = useState<ReturnType<typeof diff> | null>(null);
 
   useEffect(() => {
-    const tick = () => setParts(diff(target, Date.now()));
+    const tick = () => setParts(diff(targetMs, Date.now()));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [target]);
+  }, [targetMs]);
 
   const cells = [
     { v: parts?.d ?? 0, l: "dias" },
