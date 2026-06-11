@@ -1,4 +1,5 @@
 import type { Position, PositionGroup } from "@/lib/types";
+import { BRT_DELTA } from "@/lib/data/cities";
 
 // Fixed timezone so server & client render identical strings (no hydration drift).
 // Stored kickoff times are treated as venue-local; we display them as-is (UTC).
@@ -19,6 +20,24 @@ export function fmtTime(iso: string): string {
   const h = String(d.getUTCHours()).padStart(2, "0");
   const m = String(d.getUTCMinutes()).padStart(2, "0");
   return `${h}:${m}`;
+}
+
+/**
+ * Horário do jogo no fuso escolhido. "local" mostra o horário da sede (como
+ * armazenado); "brt" converte para o horário de Brasília usando o offset da
+ * cidade. Acrescenta "(+1)" quando, em Brasília, o jogo cai no dia seguinte.
+ */
+export function fmtKickoff(iso: string, cityId: string, tz: "local" | "brt" = "local"): string {
+  const d = new Date(iso);
+  let hour = d.getUTCHours();
+  const minute = d.getUTCMinutes();
+  let dayShift = 0;
+  if (tz === "brt") {
+    hour += BRT_DELTA[cityId] ?? 0;
+    if (hour >= 24) { hour -= 24; dayShift = 1; }
+  }
+  const t = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return dayShift > 0 ? `${t} (+1)` : t;
 }
 
 export function fmtDay(iso: string): string {

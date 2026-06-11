@@ -19,10 +19,12 @@ import { Badge, LiveBadge } from "@/components/ui/Badge";
 import { Flag } from "@/components/ui/Flag";
 import { Reveal, Stagger, StaggerItem } from "@/components/ui/Reveal";
 import { CountUp } from "@/components/ui/CountUp";
-import { fmtDay, fmtTime } from "@/lib/format";
+import { fmtDay, fmtKickoff } from "@/lib/format";
+import { useTz } from "@/store/useTimezone";
 
 export default function HomePage() {
   const { tournament } = useTournament();
+  const tz = useTz();
 
   const { live, upcoming, recent, nextMatch, totalGoals, played } = useMemo(() => {
     const ms = tournament.matches;
@@ -126,7 +128,7 @@ export default function HomePage() {
                   Próxima partida
                 </div>
                 <div className="mb-4 text-sm text-white/80">
-                  {fmtDay(nextMatch.date)} · {fmtTime(nextMatch.date)}
+                  {fmtDay(nextMatch.date)} · {fmtKickoff(nextMatch.date, nextMatch.cityId, tz)}
                 </div>
                 <HeroMatch
                   matchCodes={[nextMatch.homeCode, nextMatch.awayCode]}
