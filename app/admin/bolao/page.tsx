@@ -9,6 +9,7 @@ import { useTournament } from "@/components/providers/TournamentProvider";
 import { TEAMS } from "@/lib/data/teams";
 import {
   brazilFacts, GROUP_FINISH_OPTIONS, STAGE_OPTIONS,
+  GLOBAL_LOCK_EPOCH, matchLockEpoch, isLocked,
   type PoolData, type PoolParticipant, type PoolPrediction, type GroupFinish, type BrazilStage,
 } from "@/lib/engine/pool";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -59,6 +60,7 @@ export default function PoolAdminPage() {
   }, [authed]);
 
   const facts = useMemo(() => brazilFacts(tournament), [tournament]);
+  const globalLocked = isLocked(GLOBAL_LOCK_EPOCH);
 
   const post = async (body: Record<string, unknown>) => {
     const res = await fetch("/api/pool/admin", {
@@ -177,6 +179,7 @@ export default function PoolAdminPage() {
               prediction={data.predictions[p.id]}
               matchPreds={data.matchPredictions[p.id] ?? {}}
               brazilMatches={facts.matches}
+              globalLocked={globalLocked}
               onTogglePaid={() => togglePaid(p)}
               onRemove={() => removeParticipant(p.id)}
               onSavePred={(pred) => savePredictions(p.id, pred)}
@@ -214,24 +217,25 @@ function AddForm({ onAdd }: { onAdd: (name: string, emoji: string, paid: boolean
   );
 }
 
-function StepperMini({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function StepperMini({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled?: boolean }) {
   return (
     <div className="flex items-center gap-1">
-      <button type="button" onClick={() => onChange(Math.max(0, value - 1))} className="grid h-6 w-6 place-items-center rounded border border-[var(--border)] text-ink-400 hover:text-red-500"><Minus size={11} /></button>
+      <button type="button" disabled={disabled} onClick={() => onChange(Math.max(0, value - 1))} className="grid h-6 w-6 place-items-center rounded border border-[var(--border)] text-ink-400 hover:text-red-500 disabled:opacity-40"><Minus size={11} /></button>
       <span className="w-5 text-center stat-num font-extrabold">{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(20, value + 1))} className="grid h-6 w-6 place-items-center rounded border border-[var(--border)] text-ink-400 hover:text-pitch-500"><Plus size={11} /></button>
+      <button type="button" disabled={disabled} onClick={() => onChange(Math.min(20, value + 1))} className="grid h-6 w-6 place-items-center rounded border border-[var(--border)] text-ink-400 hover:text-pitch-500 disabled:opacity-40"><Plus size={11} /></button>
     </div>
   );
 }
 
 function ParticipantEditor({
-  participant, prediction, matchPreds, brazilMatches,
+  participant, prediction, matchPreds, brazilMatches, globalLocked,
   onTogglePaid, onRemove, onSavePred, onSaveMatch,
 }: {
   participant: PoolParticipant;
   prediction?: PoolPrediction;
   matchPreds: Record<string, { homeGoals: number; awayGoals: number }>;
   brazilMatches: import("@/lib/types").Match[];
+  globalLocked: boolean;
   onTogglePaid: () => void;
   onRemove: () => void;
   onSavePred: (p: PoolPrediction) => Promise<void>;
@@ -277,33 +281,38 @@ function ParticipantEditor({
         <div className="space-y-4 border-t border-[var(--border)] p-3">
           {/* palpites pré-Copa */}
           <div>
-            <div className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-400">Palpites da campanha do Brasil 🇧🇷</div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wide text-ink-400">
+              Palpites da campanha do Brasil 🇧🇷
+              {globalLocked && <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] normal-case text-amber-600 dark:text-amber-300"><Lock size={10} /> encerradas (1h antes do 1º jogo)</span>}
+            </div>
+            <div className={`grid grid-cols-1 gap-2 sm:grid-cols-2 ${globalLocked ? "opacity-60" : ""}`}>
               <Field label="Colocação no grupo">
-                <select value={gf} onChange={(e) => setGf(e.target.value as GroupFinish)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm">
+                <select value={gf} disabled={globalLocked} onChange={(e) => setGf(e.target.value as GroupFinish)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60">
                   <option value="">—</option>
                   {GROUP_FINISH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </Field>
               <Field label="Pontos na fase de grupos (0–9)">
-                <input type="number" min={0} max={9} value={gp} onChange={(e) => setGp(e.target.value === "" ? "" : Number(e.target.value))} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm" />
+                <input type="number" min={0} max={9} value={gp} disabled={globalLocked} onChange={(e) => setGp(e.target.value === "" ? "" : Number(e.target.value))} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60" />
               </Field>
               <Field label="Até onde o Brasil vai">
-                <select value={stage} onChange={(e) => setStage(e.target.value as BrazilStage)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm">
+                <select value={stage} disabled={globalLocked} onChange={(e) => setStage(e.target.value as BrazilStage)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60">
                   <option value="">—</option>
                   {STAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </Field>
               <div className="grid grid-cols-2 gap-2">
-                <Field label="Campeão da Copa"><TeamSelect value={champion} onChange={setChampion} /></Field>
-                <Field label="Vice-campeão"><TeamSelect value={vice} onChange={setVice} /></Field>
+                <Field label="Campeão da Copa"><TeamSelect value={champion} onChange={setChampion} disabled={globalLocked} /></Field>
+                <Field label="Vice-campeão"><TeamSelect value={vice} onChange={setVice} disabled={globalLocked} /></Field>
               </div>
             </div>
-            <div className="mt-2 flex justify-end">
-              <button onClick={savePred} disabled={savingPred === "saving"} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
-                {savingPred === "saving" ? <Loader2 size={13} className="animate-spin" /> : savingPred === "ok" ? <Check size={13} /> : <Save size={13} />} Salvar palpites
-              </button>
-            </div>
+            {!globalLocked && (
+              <div className="mt-2 flex justify-end">
+                <button onClick={savePred} disabled={savingPred === "saving"} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
+                  {savingPred === "saving" ? <Loader2 size={13} className="animate-spin" /> : savingPred === "ok" ? <Check size={13} /> : <Save size={13} />} Salvar palpites
+                </button>
+              </div>
+            )}
           </div>
 
           {/* jogos do Brasil */}
@@ -326,20 +335,25 @@ function MatchGuess({ match, current, onSave }: { match: import("@/lib/types").M
   const [h, setH] = useState(current?.homeGoals ?? 0);
   const [a, setA] = useState(current?.awayGoals ?? 0);
   const [state, setState] = useState<"idle" | "saving" | "ok">("idle");
+  const locked = isLocked(matchLockEpoch(match.id));
   useEffect(() => { setH(current?.homeGoals ?? 0); setA(current?.awayGoals ?? 0); }, [current?.homeGoals, current?.awayGoals]);
   const save = async () => { setState("saving"); try { await onSave(h, a); setState("ok"); setTimeout(() => setState("idle"), 1200); } catch { setState("idle"); } };
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg-elevated)] px-2 py-1.5 text-sm">
+    <div className={`flex items-center gap-2 rounded-lg bg-[var(--bg-elevated)] px-2 py-1.5 text-sm ${locked ? "opacity-70" : ""}`}>
       <Flag code={match.homeCode} size="xs" />
       <span className="w-9 font-semibold">{match.homeCode}</span>
-      <StepperMini value={h} onChange={setH} />
+      <StepperMini value={h} onChange={setH} disabled={locked} />
       <span className="text-ink-300">:</span>
-      <StepperMini value={a} onChange={setA} />
+      <StepperMini value={a} onChange={setA} disabled={locked} />
       <span className="w-9 text-right font-semibold">{match.awayCode}</span>
       <Flag code={match.awayCode} size="xs" />
-      <button onClick={save} disabled={state === "saving"} className="ml-auto inline-flex items-center gap-1 rounded-lg bg-pitch-500/15 px-2 py-1 text-xs font-bold text-pitch-600 disabled:opacity-60 dark:text-pitch-300">
-        {state === "saving" ? <Loader2 size={12} className="animate-spin" /> : state === "ok" ? <Check size={12} /> : <Save size={12} />} {current ? "" : "Salvar"}
-      </button>
+      {locked ? (
+        <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-300" title="Palpite encerrado (1h antes do jogo)"><Lock size={12} /> Encerrado</span>
+      ) : (
+        <button onClick={save} disabled={state === "saving"} className="ml-auto inline-flex items-center gap-1 rounded-lg bg-pitch-500/15 px-2 py-1 text-xs font-bold text-pitch-600 disabled:opacity-60 dark:text-pitch-300">
+          {state === "saving" ? <Loader2 size={12} className="animate-spin" /> : state === "ok" ? <Check size={12} /> : <Save size={12} />} {current ? "" : "Salvar"}
+        </button>
+      )}
     </div>
   );
 }
@@ -353,9 +367,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function TeamSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function TeamSelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm">
+    <select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60">
       <option value="">—</option>
       {SORTED_TEAMS.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
     </select>
