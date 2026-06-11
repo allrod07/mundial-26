@@ -46,7 +46,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!authed) return;
     setLoading(true);
-    fetch("/api/results")
+    fetch("/api/results", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setLive({ results: d.results ?? {}, events: d.events ?? {} }))
       .catch(() => {})

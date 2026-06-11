@@ -56,7 +56,7 @@ export default function PoolAdminPage() {
   useEffect(() => {
     if (!authed) return;
     setLoading(true);
-    fetch("/api/pool").then((r) => r.json()).then((d: PoolData) => setData(d ?? EMPTY)).catch(() => {}).finally(() => setLoading(false));
+    fetch("/api/pool", { cache: "no-store" }).then((r) => r.json()).then((d: PoolData) => setData(d ?? EMPTY)).catch(() => {}).finally(() => setLoading(false));
   }, [authed]);
 
   const facts = useMemo(() => brazilFacts(tournament), [tournament]);
