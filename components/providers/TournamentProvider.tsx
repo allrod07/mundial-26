@@ -20,7 +20,10 @@ import type { LiveOverlay } from "@/lib/api/overlay";
 const STORAGE_KEY = "mundial26:sim";
 
 interface TournamentCtx {
+  /** Mundo REAL: só resultados oficiais (Supabase). Imune ao simulador. */
   tournament: ResolvedTournament;
+  /** Simulador: realidade atual + palpites do usuário (localStorage). */
+  simTournament: ResolvedTournament;
   overrides: MatchResultMap;
   isSimulated: boolean;
   hydrated: boolean;
@@ -81,17 +84,31 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
   const isLive = live?.source === "live";
 
+  // ── Mundo REAL ────────────────────────────────────────────────────────────
+  // Apenas resultados oficiais (Supabase). NUNCA mescla os palpites do
+  // simulador, então classificação, artilharia, calendário e chaveamento ficam
+  // imunes ao que o usuário faz no simulador.
   const tournament = useMemo<ResolvedTournament>(() => {
     if (isLive) {
-      // live results form the base; user overrides (simulation) layer on top.
-      // Scorers come from the REAL events entered in /admin — never fabricated.
+      return buildTournament(live!.results, {
+        fabricate: false,
+        events: live!.events,
+        fabricateEvents: false,
+      });
+    }
+    return BASE_TOURNAMENT;
+  }, [isLive, live]);
+
+  // ── Simulador ─────────────────────────────────────────────────────────────
+  // Parte da realidade atual e aplica por cima os palpites do usuário. Usado
+  // SOMENTE na tela do simulador — não vaza para as páginas de informação.
+  const simTournament = useMemo<ResolvedTournament>(() => {
+    if (isLive) {
       return buildTournament(
         { ...live!.results, ...overrides },
-        { fabricate: false, events: live!.events, fabricateEvents: false },
+        { fabricate: false, events: live!.events, fabricateEvents: true },
       );
     }
-    // No live data: real schedule, blank until filled in /admin or simulated.
-    // The simulator may fabricate scorers (it's a projection); live never does.
     return Object.keys(overrides).length
       ? buildTournament(overrides, { fabricate: false, fabricateEvents: true })
       : BASE_TOURNAMENT;
@@ -100,6 +117,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
   const value = useMemo<TournamentCtx>(
     () => ({
       tournament,
+      simTournament,
       overrides,
       isSimulated: Object.keys(overrides).length > 0,
       hydrated,
@@ -121,7 +139,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       simulateAll: () => setOverrides((o) => simulateRemainder(o)),
       resetAll: () => setOverrides({}),
     }),
-    [tournament, overrides, hydrated, isLive, live],
+    [tournament, simTournament, overrides, hydrated, isLive, live],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
