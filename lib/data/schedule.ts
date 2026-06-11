@@ -12,53 +12,90 @@ function iso(day: string, hour: number, minute: number): string {
   return `${day}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00Z`;
 }
 
-function addDays(base: string, n: number): string {
-  const d = new Date(base + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
-// ── Official group-stage fixtures (104-match schedule, FWC26) ─────────────────
-// [matchNo, home, away, group, hour, minute] — kickoff times in ET.
-type Fixture = [number, string, string, string, number, number];
+// ── Calendário oficial da fase de grupos (Copa do Mundo FIFA 2026) ────────────
+// [nº, mandante, visitante, grupo, data, hora, minuto, cidade]
+// Datas, sedes e horários OFICIAIS, conforme o sorteio de 5/12/2025. O horário
+// é o LOCAL da sede (24h), exibido como está. A fase de grupos vai de 11 a 27
+// de junho; cada rodada ocupa dias próprios e, na 3ª rodada, os dois jogos de
+// cada grupo são simultâneos. `cidade` referencia os ids de lib/data/cities.ts.
+type Fixture = [number, string, string, string, string, number, number, string];
 
 const GROUP_FIXTURES: Fixture[] = [
-  [1, "MEX", "RSA", "A", 15, 0], [2, "KOR", "CZE", "A", 22, 0],
-  [3, "CAN", "BIH", "B", 15, 0], [4, "USA", "PAR", "D", 21, 0],
-  [5, "HAI", "SCO", "C", 21, 0], [6, "AUS", "TUR", "D", 0, 0],
-  [7, "BRA", "MAR", "C", 18, 0], [8, "QAT", "SUI", "B", 15, 0],
-  [9, "CIV", "ECU", "E", 19, 0], [10, "GER", "CUW", "E", 13, 0],
-  [11, "NED", "JPN", "F", 16, 0], [12, "SWE", "TUN", "F", 22, 0],
-  [13, "KSA", "URU", "H", 18, 0], [14, "ESP", "CPV", "H", 12, 0],
-  [15, "IRN", "NZL", "G", 21, 0], [16, "BEL", "EGY", "G", 15, 0],
-  [17, "FRA", "SEN", "I", 15, 0], [18, "IRQ", "NOR", "I", 18, 0],
-  [19, "ARG", "ALG", "J", 21, 0], [20, "AUT", "JOR", "J", 0, 0],
-  [21, "GHA", "PAN", "L", 19, 0], [22, "ENG", "CRO", "L", 16, 0],
-  [23, "POR", "COD", "K", 13, 0], [24, "UZB", "COL", "K", 22, 0],
-  [25, "CZE", "RSA", "A", 12, 0], [26, "SUI", "BIH", "B", 15, 0],
-  [27, "CAN", "QAT", "B", 18, 0], [28, "MEX", "KOR", "A", 21, 0],
-  [29, "BRA", "HAI", "C", 20, 30], [30, "SCO", "MAR", "C", 18, 0],
-  [31, "TUR", "PAR", "D", 23, 0], [32, "USA", "AUS", "D", 15, 0],
-  [33, "GER", "CIV", "E", 16, 0], [34, "ECU", "CUW", "E", 20, 0],
-  [35, "NED", "SWE", "F", 13, 0], [36, "TUN", "JPN", "F", 0, 0],
-  [37, "URU", "CPV", "H", 18, 0], [38, "ESP", "KSA", "H", 12, 0],
-  [39, "BEL", "IRN", "G", 15, 0], [40, "NZL", "EGY", "G", 21, 0],
-  [41, "NOR", "SEN", "I", 20, 0], [42, "FRA", "IRQ", "I", 17, 0],
-  [43, "ARG", "AUT", "J", 13, 0], [44, "JOR", "ALG", "J", 23, 0],
-  [45, "ENG", "GHA", "L", 16, 0], [46, "PAN", "CRO", "L", 19, 0],
-  [47, "POR", "UZB", "K", 13, 0], [48, "COL", "COD", "K", 22, 0],
-  [49, "SCO", "BRA", "C", 18, 0], [50, "MAR", "HAI", "C", 18, 0],
-  [51, "SUI", "CAN", "B", 15, 0], [52, "BIH", "QAT", "B", 15, 0],
-  [53, "CZE", "MEX", "A", 21, 0], [54, "RSA", "KOR", "A", 21, 0],
-  [55, "CUW", "CIV", "E", 16, 0], [56, "ECU", "GER", "E", 16, 0],
-  [57, "JPN", "SWE", "F", 19, 0], [58, "TUN", "NED", "F", 19, 0],
-  [59, "TUR", "USA", "D", 22, 0], [60, "PAR", "AUS", "D", 22, 0],
-  [61, "NOR", "FRA", "I", 15, 0], [62, "SEN", "IRQ", "I", 15, 0],
-  [63, "EGY", "IRN", "G", 23, 0], [64, "NZL", "BEL", "G", 23, 0],
-  [65, "CPV", "KSA", "H", 20, 0], [66, "URU", "ESP", "H", 20, 0],
-  [67, "PAN", "ENG", "L", 17, 0], [68, "CRO", "GHA", "L", 17, 0],
-  [69, "ALG", "AUT", "J", 22, 0], [70, "JOR", "ARG", "J", 22, 0],
-  [71, "COL", "POR", "K", 19, 30], [72, "COD", "UZB", "K", 19, 30],
+  // ── Rodada 1 (11–17 jun) ──
+  [1, "MEX", "RSA", "A", "2026-06-11", 13, 0, "mex"],
+  [2, "KOR", "CZE", "A", "2026-06-11", 20, 0, "gdl"],
+  [3, "CAN", "BIH", "B", "2026-06-12", 15, 0, "tor"],
+  [4, "USA", "PAR", "D", "2026-06-12", 18, 0, "la"],
+  [5, "HAI", "SCO", "C", "2026-06-13", 21, 0, "bos"],
+  [6, "AUS", "TUR", "D", "2026-06-13", 21, 0, "van"],
+  [7, "BRA", "MAR", "C", "2026-06-13", 18, 0, "nyc"],
+  [8, "QAT", "SUI", "B", "2026-06-13", 12, 0, "sf"],
+  [9, "CIV", "ECU", "E", "2026-06-14", 19, 0, "phi"],
+  [10, "GER", "CUW", "E", "2026-06-14", 12, 0, "hou"],
+  [11, "NED", "JPN", "F", "2026-06-14", 15, 0, "dal"],
+  [12, "SWE", "TUN", "F", "2026-06-14", 20, 0, "mty"],
+  [13, "KSA", "URU", "H", "2026-06-15", 18, 0, "mia"],
+  [14, "ESP", "CPV", "H", "2026-06-15", 12, 0, "atl"],
+  [15, "IRN", "NZL", "G", "2026-06-15", 18, 0, "la"],
+  [16, "BEL", "EGY", "G", "2026-06-15", 12, 0, "sea"],
+  [17, "FRA", "SEN", "I", "2026-06-16", 15, 0, "nyc"],
+  [18, "IRQ", "NOR", "I", "2026-06-16", 18, 0, "bos"],
+  [19, "ARG", "ALG", "J", "2026-06-16", 20, 0, "kc"],
+  [20, "AUT", "JOR", "J", "2026-06-16", 21, 0, "sf"],
+  [21, "GHA", "PAN", "L", "2026-06-17", 19, 0, "tor"],
+  [22, "ENG", "CRO", "L", "2026-06-17", 15, 0, "dal"],
+  [23, "POR", "COD", "K", "2026-06-17", 12, 0, "hou"],
+  [24, "UZB", "COL", "K", "2026-06-17", 20, 0, "mex"],
+  // ── Rodada 2 (18–23 jun) ──
+  [25, "CZE", "RSA", "A", "2026-06-18", 12, 0, "atl"],
+  [26, "SUI", "BIH", "B", "2026-06-18", 12, 0, "la"],
+  [27, "CAN", "QAT", "B", "2026-06-18", 15, 0, "van"],
+  [28, "MEX", "KOR", "A", "2026-06-18", 21, 0, "gdl"],
+  [29, "BRA", "HAI", "C", "2026-06-19", 20, 30, "phi"],
+  [30, "SCO", "MAR", "C", "2026-06-19", 18, 0, "bos"],
+  [31, "TUR", "PAR", "D", "2026-06-19", 20, 0, "sf"],
+  [32, "USA", "AUS", "D", "2026-06-19", 12, 0, "sea"],
+  [33, "GER", "CIV", "E", "2026-06-20", 16, 0, "tor"],
+  [34, "ECU", "CUW", "E", "2026-06-20", 19, 0, "kc"],
+  [35, "NED", "SWE", "F", "2026-06-20", 12, 0, "hou"],
+  [36, "TUN", "JPN", "F", "2026-06-20", 22, 0, "mty"],
+  [37, "URU", "CPV", "H", "2026-06-21", 18, 0, "mia"],
+  [38, "ESP", "KSA", "H", "2026-06-21", 12, 0, "atl"],
+  [39, "BEL", "IRN", "G", "2026-06-21", 12, 0, "la"],
+  [40, "NZL", "EGY", "G", "2026-06-21", 18, 0, "van"],
+  [41, "NOR", "SEN", "I", "2026-06-22", 20, 0, "nyc"],
+  [42, "FRA", "IRQ", "I", "2026-06-22", 17, 0, "phi"],
+  [43, "ARG", "AUT", "J", "2026-06-22", 12, 0, "dal"],
+  [44, "JOR", "ALG", "J", "2026-06-22", 20, 0, "sf"],
+  [45, "ENG", "GHA", "L", "2026-06-23", 16, 0, "bos"],
+  [46, "PAN", "CRO", "L", "2026-06-23", 19, 0, "tor"],
+  [47, "POR", "UZB", "K", "2026-06-23", 12, 0, "hou"],
+  [48, "COL", "COD", "K", "2026-06-23", 20, 0, "gdl"],
+  // ── Rodada 3 (24–27 jun) — jogos simultâneos por grupo ──
+  [49, "SCO", "BRA", "C", "2026-06-24", 18, 0, "mia"],
+  [50, "MAR", "HAI", "C", "2026-06-24", 18, 0, "atl"],
+  [51, "SUI", "CAN", "B", "2026-06-24", 12, 0, "van"],
+  [52, "BIH", "QAT", "B", "2026-06-24", 12, 0, "sea"],
+  [53, "CZE", "MEX", "A", "2026-06-24", 19, 0, "mex"],
+  [54, "RSA", "KOR", "A", "2026-06-24", 19, 0, "mty"],
+  [55, "CUW", "CIV", "E", "2026-06-25", 16, 0, "phi"],
+  [56, "ECU", "GER", "E", "2026-06-25", 16, 0, "nyc"],
+  [57, "JPN", "SWE", "F", "2026-06-25", 18, 0, "dal"],
+  [58, "TUN", "NED", "F", "2026-06-25", 18, 0, "kc"],
+  [59, "TUR", "USA", "D", "2026-06-25", 19, 0, "la"],
+  [60, "PAR", "AUS", "D", "2026-06-25", 19, 0, "sf"],
+  [61, "NOR", "FRA", "I", "2026-06-26", 15, 0, "bos"],
+  [62, "SEN", "IRQ", "I", "2026-06-26", 15, 0, "tor"],
+  [63, "EGY", "IRN", "G", "2026-06-26", 20, 0, "sea"],
+  [64, "NZL", "BEL", "G", "2026-06-26", 20, 0, "van"],
+  [65, "CPV", "KSA", "H", "2026-06-26", 19, 0, "hou"],
+  [66, "URU", "ESP", "H", "2026-06-26", 18, 0, "gdl"],
+  [67, "PAN", "ENG", "L", "2026-06-27", 17, 0, "nyc"],
+  [68, "CRO", "GHA", "L", "2026-06-27", 17, 0, "phi"],
+  [69, "ALG", "AUT", "J", "2026-06-27", 21, 0, "kc"],
+  [70, "JOR", "ARG", "J", "2026-06-27", 21, 0, "dal"],
+  [71, "COL", "POR", "K", "2026-06-27", 19, 30, "mia"],
+  [72, "COD", "UZB", "K", "2026-06-27", 19, 30, "atl"],
 ];
 
 function groupMatchday(num: number): number {
@@ -66,24 +103,18 @@ function groupMatchday(num: number): number {
 }
 
 function buildGroupMatches(): Match[] {
-  return GROUP_FIXTURES.map(([num, home, away, group, hour, minute]) => {
-    const dayOffset = Math.min(16, Math.floor((num - 1) / 4.5));
-    const day = addDays("2026-06-11", dayOffset);
-    // opening match in Mexico City; otherwise rotate venues
-    const city = num === 1 ? CITIES.find((c) => c.id === "mex")! : CITIES[(num + 3) % CITIES.length];
-    return {
-      id: `G-${num}`,
-      stage: "Grupos",
-      group,
-      round: groupMatchday(num),
-      date: iso(day, hour, minute),
-      cityId: city.id,
-      homeCode: home,
-      awayCode: away,
-      status: "agendado",
-      events: [],
-    };
-  });
+  return GROUP_FIXTURES.map(([num, home, away, group, date, hour, minute, cityId]) => ({
+    id: `G-${num}`,
+    stage: "Grupos" as const,
+    group,
+    round: groupMatchday(num),
+    date: iso(date, hour, minute),
+    cityId,
+    homeCode: home,
+    awayCode: away,
+    status: "agendado" as const,
+    events: [],
+  }));
 }
 
 // ── Knockout template (official 2026 bracket) ────────────────────────────────
