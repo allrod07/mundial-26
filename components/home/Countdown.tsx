@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NOW } from "@/lib/data/schedule";
 
 function diff(target: number, now: number) {
   const ms = Math.max(0, target - now);
@@ -13,27 +12,23 @@ function diff(target: number, now: number) {
   };
 }
 
-/** Counts down to `targetIso`, advancing in real time from the demo clock. */
+/** Counts down to `targetIso` in real time (client-only to avoid hydration drift). */
 export function Countdown({ targetIso }: { targetIso: string }) {
   const target = new Date(targetIso).getTime();
-  const [parts, setParts] = useState(() => diff(target, NOW.getTime()));
+  const [parts, setParts] = useState<ReturnType<typeof diff> | null>(null);
 
   useEffect(() => {
-    const mount = Date.now();
-    const tick = () => {
-      const effectiveNow = NOW.getTime() + (Date.now() - mount);
-      setParts(diff(target, effectiveNow));
-    };
+    const tick = () => setParts(diff(target, Date.now()));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [target]);
 
   const cells = [
-    { v: parts.d, l: "dias" },
-    { v: parts.h, l: "horas" },
-    { v: parts.m, l: "min" },
-    { v: parts.s, l: "seg" },
+    { v: parts?.d ?? 0, l: "dias" },
+    { v: parts?.h ?? 0, l: "horas" },
+    { v: parts?.m ?? 0, l: "min" },
+    { v: parts?.s ?? 0, l: "seg" },
   ];
 
   return (

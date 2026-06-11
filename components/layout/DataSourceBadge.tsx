@@ -8,7 +8,7 @@ export function DataSourceBadge() {
   const live = dataSource === "live";
   return (
     <span
-      title={live ? "Resultados ao vivo via API-Football" : "Dados de demonstração (oficiais + simulados)"}
+      title={live ? "Resultados ao vivo (preenchidos no painel /admin)" : "Aguardando resultados — preencha as partidas no painel /admin"}
       className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold sm:inline-flex ${
         live
           ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300"
@@ -22,7 +22,7 @@ export function DataSourceBadge() {
         </>
       ) : (
         <>
-          <Database size={11} /> DEMO
+          <Database size={11} /> PRÉ-COPA
         </>
       )}
     </span>

@@ -173,7 +173,7 @@ export function buildTournament(
   overrides: MatchResultMap = {},
   opts: { fabricate?: boolean } = {},
 ): ResolvedTournament {
-  const fabricate = opts.fabricate ?? true;
+  const fabricate = opts.fabricate ?? false;
   const matches: Match[] = BASE_MATCHES.map((m) => ({ ...m, events: [] }));
   const matchMap: Record<string, Match> = Object.fromEntries(matches.map((m) => [m.id, m]));
 
@@ -257,13 +257,10 @@ function winnerLoser(home: string | undefined, away: string | undefined, res: Si
 /** Returns a complete result map that plays out every remaining match. */
 export function simulateRemainder(overrides: MatchResultMap = {}): MatchResultMap {
   const ov: MatchResultMap = { ...overrides };
-  const now = NOW.getTime();
 
-  // groups: fill anything not already finished-by-clock and not overridden
+  // groups: simulate every match the user hasn't already filled in by hand
   for (const m of BASE_GROUP_MATCHES) {
     if (ov[m.id]) continue;
-    const finishedByClock = new Date(m.date).getTime() + LIVE_MS <= now;
-    if (finishedByClock) continue;
     ov[m.id] = scoreToResult(
       simulateScore(ratingOf(m.homeCode), ratingOf(m.awayCode), `sim-${m.id}`),
     );
