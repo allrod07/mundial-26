@@ -53,8 +53,8 @@ export default function AdminPage() {
   }, [authed]);
 
   const tournament = useMemo(
-    () => buildTournament(live.results, { fabricate: false }),
-    [live.results],
+    () => buildTournament(live.results, { fabricate: false, events: live.events, fabricateEvents: false }),
+    [live.results, live.events],
   );
 
   const onSaved = (id: string, result: { homeGoals: number; awayGoals: number; homePens?: number; awayPens?: number }, events: MatchEvent[]) =>

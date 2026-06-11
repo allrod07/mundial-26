@@ -83,13 +83,17 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
   const tournament = useMemo<ResolvedTournament>(() => {
     if (isLive) {
-      // live results form the base; user overrides (simulation) layer on top
-      return buildTournament({ ...live!.results, ...overrides }, { fabricate: false });
+      // live results form the base; user overrides (simulation) layer on top.
+      // Scorers come from the REAL events entered in /admin — never fabricated.
+      return buildTournament(
+        { ...live!.results, ...overrides },
+        { fabricate: false, events: live!.events, fabricateEvents: false },
+      );
     }
-    // No live data: show the real schedule with blank results until they're
-    // filled in via /admin (live) or the user simulates. Never fabricate scores.
+    // No live data: real schedule, blank until filled in /admin or simulated.
+    // The simulator may fabricate scorers (it's a projection); live never does.
     return Object.keys(overrides).length
-      ? buildTournament(overrides, { fabricate: false })
+      ? buildTournament(overrides, { fabricate: false, fabricateEvents: true })
       : BASE_TOURNAMENT;
   }, [overrides, isLive, live]);
 
