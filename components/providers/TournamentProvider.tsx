@@ -58,7 +58,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
   // fetch the live overlay (results synced from API-Football → Supabase)
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/results")
+    fetch("/api/results", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: LiveOverlay | null) => {
         if (!cancelled && data && data.source === "live") setLive(data);

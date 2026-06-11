@@ -18,7 +18,7 @@ export default function BolaoImpressaoPage() {
   const [data, setData] = useState<PoolData>(EMPTY);
 
   useEffect(() => {
-    fetch("/api/pool").then((r) => (r.ok ? r.json() : EMPTY)).then((d: PoolData) => setData(d ?? EMPTY)).catch(() => {});
+    fetch("/api/pool", { cache: "no-store" }).then((r) => (r.ok ? r.json() : EMPTY)).then((d: PoolData) => setData(d ?? EMPTY)).catch(() => {});
   }, []);
 
   const { facts, results } = useMemo(() => scorePool(tournament, data), [tournament, data]);

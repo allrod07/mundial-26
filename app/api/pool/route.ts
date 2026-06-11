@@ -5,10 +5,12 @@ import type { PoolData } from "@/lib/engine/pool";
 export const dynamic = "force-dynamic";
 
 const EMPTY: PoolData = { participants: [], predictions: {}, matchPredictions: {} };
+// Nunca cachear: o painel lê isto logo após gravar e precisa do estado atual.
+const NO_STORE = { headers: { "cache-control": "no-store, max-age=0" } } as const;
 
 export async function GET() {
   const sb = supabaseRead();
-  if (!sb) return NextResponse.json(EMPTY);
+  if (!sb) return NextResponse.json(EMPTY, NO_STORE);
   try {
     const [{ data: participants }, { data: preds }, { data: mps }] = await Promise.all([
       sb.from("pool_participants").select("id,name,emoji,paid").order("created_at"),
@@ -31,8 +33,8 @@ export async function GET() {
     for (const m of mps ?? []) {
       (matchPredictions[m.participant_id] ??= {})[m.match_id] = { homeGoals: m.home_goals, awayGoals: m.away_goals };
     }
-    return NextResponse.json({ participants: participants ?? [], predictions, matchPredictions } satisfies PoolData);
+    return NextResponse.json({ participants: participants ?? [], predictions, matchPredictions } satisfies PoolData, NO_STORE);
   } catch {
-    return NextResponse.json(EMPTY);
+    return NextResponse.json(EMPTY, NO_STORE);
   }
 }

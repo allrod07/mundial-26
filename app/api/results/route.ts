@@ -5,9 +5,11 @@ import { EMPTY_OVERLAY as EMPTY, type LiveOverlay } from "@/lib/api/overlay";
 
 export const dynamic = "force-dynamic";
 
+const NO_STORE = { headers: { "cache-control": "no-store, max-age=0" } } as const;
+
 export async function GET() {
   const sb = supabaseRead();
-  if (!sb) return NextResponse.json(EMPTY);
+  if (!sb) return NextResponse.json(EMPTY, NO_STORE);
 
   try {
     const [{ data: matches }, { data: events }, { data: stats }, { data: sync }] = await Promise.all([
@@ -17,7 +19,7 @@ export async function GET() {
       sb.from("sync_state").select("last_sync").eq("id", 1).maybeSingle(),
     ]);
 
-    if (!matches || matches.length === 0) return NextResponse.json(EMPTY);
+    if (!matches || matches.length === 0) return NextResponse.json(EMPTY, NO_STORE);
 
     const results: MatchResultMap = {};
     for (const m of matches) {
@@ -51,8 +53,8 @@ export async function GET() {
       events: evMap,
       stats: statMap,
       lastSync: sync?.last_sync ?? null,
-    } satisfies LiveOverlay);
+    } satisfies LiveOverlay, NO_STORE);
   } catch {
-    return NextResponse.json(EMPTY);
+    return NextResponse.json(EMPTY, NO_STORE);
   }
 }

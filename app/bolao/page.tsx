@@ -33,7 +33,7 @@ export default function BolaoPage() {
   const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
-    fetch("/api/pool")
+    fetch("/api/pool", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : EMPTY))
       .then((d: PoolData) => setData(d ?? EMPTY))
       .catch(() => {})
