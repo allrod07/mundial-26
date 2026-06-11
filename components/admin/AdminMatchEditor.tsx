@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Match, MatchEvent } from "@/lib/types";
 import { TEAM_MAP } from "@/lib/data/teams";
 import { Flag } from "@/components/ui/Flag";
@@ -61,6 +61,21 @@ export function AdminMatchEditor({
   const [evPlayer, setEvPlayer] = useState("");
   const [evAssist, setEvAssist] = useState("");
   const [evMin, setEvMin] = useState("");
+
+  // Os dados salvos (result/events) chegam do /api/results de forma assíncrona,
+  // depois da montagem. Sem sincronizar, os campos ficariam presos no estado
+  // inicial (0 a 0) mesmo com o jogo já salvo no banco. Dependemos dos valores
+  // primitivos (não do objeto) para não sobrescrever uma edição em andamento.
+  useEffect(() => {
+    setHg(result?.homeGoals ?? 0);
+    setAg(result?.awayGoals ?? 0);
+    setHp(result?.homePens ?? 4);
+    setAp(result?.awayPens ?? 2);
+  }, [result?.homeGoals, result?.awayGoals, result?.homePens, result?.awayPens]);
+
+  useEffect(() => {
+    setEvs(events ?? []);
+  }, [events]);
 
   if (!home || !away) {
     return (
