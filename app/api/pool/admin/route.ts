@@ -3,25 +3,30 @@ import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-function authed(req: Request): boolean {
+function authError(req: Request): NextResponse | null {
   const secrets = [process.env.SYNC_SECRET, process.env.ADMIN_PASSWORD].filter(Boolean) as string[];
-  if (secrets.length === 0) return false;
+  if (secrets.length === 0)
+    return NextResponse.json({ error: "Painel sem senha configurada no servidor (defina ADMIN_PASSWORD ou SYNC_SECRET)." }, { status: 503 });
   const got = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
-  return secrets.includes(got);
+  if (!secrets.includes(got)) return NextResponse.json({ error: "Senha incorreta." }, { status: 401 });
+  return null;
 }
 function serviceReady(): boolean {
   return supabaseConfigured() && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 }
 
 export async function POST(req: Request) {
-  if (!authed(req)) return NextResponse.json({ error: "não autorizado" }, { status: 401 });
-  if (!serviceReady()) return NextResponse.json({ error: "Supabase service role não configurado." }, { status: 400 });
+  const ae = authError(req);
+  if (ae) return ae;
 
   let b: Record<string, unknown>;
   try { b = (await req.json()) as Record<string, unknown>; } catch { return NextResponse.json({ error: "JSON inválido" }, { status: 400 }); }
+  const op = String(b.op ?? "");
+  if (op === "ping") return NextResponse.json({ ok: true });
+
+  if (!serviceReady()) return NextResponse.json({ error: "Supabase service role não configurado." }, { status: 400 });
 
   const sb = supabaseAdmin();
-  const op = String(b.op ?? "");
   const now = new Date().toISOString();
 
   try {
@@ -83,7 +88,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!authed(req)) return NextResponse.json({ error: "não autorizado" }, { status: 401 });
+  const ae = authError(req);
+  if (ae) return ae;
   if (!serviceReady()) return NextResponse.json({ error: "Supabase service role não configurado." }, { status: 400 });
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id ausente" }, { status: 400 });

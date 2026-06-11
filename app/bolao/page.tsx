@@ -8,7 +8,7 @@ import {
 import { useTournament } from "@/components/providers/TournamentProvider";
 import { TEAM_MAP } from "@/lib/data/teams";
 import {
-  scorePool, poolEvolution, BADGES, STAGE_LABEL, BRAZIL,
+  scorePool, poolEvolution, BADGES, STAGE_LABEL, GROUP_FINISH_LABEL, BRAZIL,
   type PoolData, type PoolResult, type BadgeKey,
 } from "@/lib/engine/pool";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -84,7 +84,7 @@ export default function BolaoPage() {
       <Card className="mt-4 p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-bold"><Flag code={BRAZIL} size="sm" /> Campanha do Brasil (oficial)</div>
         <div className="flex flex-wrap gap-2 text-xs">
-          <Chip label="Grupo" value={facts.groupComplete ? (facts.eliminatedInGroups ? "Eliminado" : `${facts.groupRank}º lugar`) : "Em andamento"} />
+          <Chip label="Grupo" value={facts.actualGroupFinish ? GROUP_FINISH_LABEL[facts.actualGroupFinish] : facts.groupRank != null ? `${facts.groupRank}º (parcial)` : "Em andamento"} />
           <Chip label="Pontos no grupo" value={facts.groupPoints != null ? String(facts.groupPoints) : "—"} />
           <Chip label="Chegou até" value={facts.stageReached ? STAGE_LABEL[facts.stageReached] : "—"} />
           <Chip label="Campeão da Copa" value={facts.champion ? `${TEAM_MAP[facts.champion]?.flag ?? ""} ${TEAM_MAP[facts.champion]?.name ?? facts.champion}` : "a definir"} />
@@ -195,8 +195,8 @@ export default function BolaoPage() {
         {showRules && (
           <div className="border-t border-[var(--border)] px-4 py-3 text-sm text-ink-500">
             <ul className="space-y-1.5">
-              <li><b>Jogos do Brasil:</b> acertar o resultado (vitória/empate/derrota) vale <b>+3</b>; placar exato vale <b>+10</b>.</li>
-              <li><b>Colocação do Brasil no grupo</b> (1º/2º/eliminado): <b>+10</b> se acertar.</li>
+              <li><b>Jogos do Brasil:</b> acertar o resultado (vitória/empate/derrota) vale <b>+3</b>; placar exato vale <b>+5</b>.</li>
+              <li><b>Colocação do Brasil no grupo</b> (1º, 2º, 3º classificado ou eliminado): <b>+10</b> se acertar.</li>
               <li><b>Pontos do Brasil na fase de grupos:</b> exato <b>+8</b>; errar por 1 <b>+4</b>.</li>
               <li><b>Até onde o Brasil vai:</b> exato <b>+15</b>; trocar Campeão↔Vice <b>+5</b>.</li>
               <li><b>Campeão da Copa:</b> acertar o campeão <b>+25</b>; o vice <b>+10</b> (ambos <b>+35</b>).</li>
@@ -252,7 +252,7 @@ function ParticipantDetail({ r }: { r: PoolResult }) {
       </div>
       {/* bônus */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
-        <Bonus label="Colocação no grupo" pick={p?.brazilGroupFinish ? (p.brazilGroupFinish === "out" ? "Eliminado" : `${p.brazilGroupFinish}º`) : "—"} pts={bd.groupFinish} />
+        <Bonus label="Colocação no grupo" pick={p?.brazilGroupFinish ? GROUP_FINISH_LABEL[p.brazilGroupFinish] : "—"} pts={bd.groupFinish} />
         <Bonus label="Pontos no grupo" pick={p?.brazilGroupPoints != null ? String(p.brazilGroupPoints) : "—"} pts={bd.groupPoints} />
         <Bonus label="Fase do Brasil" pick={p?.brazilStage ? STAGE_LABEL[p.brazilStage] : "—"} pts={bd.stage} />
         <Bonus label="Campeão" pick={p?.champion ? (TEAM_MAP[p.champion]?.name ?? p.champion) : "—"} pts={bd.champion} />
