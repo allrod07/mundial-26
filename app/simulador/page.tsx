@@ -26,7 +26,9 @@ const KO_ROUNDS = [
 ];
 
 export default function SimuladorPage() {
-  const { tournament, setResult, clearResult, simulateAll, resetAll, isSimulated } = useTournament();
+  // Esta tela usa a árvore do SIMULADOR (realidade + palpites). As páginas de
+  // informação usam `tournament` (real) e não são afetadas por nada daqui.
+  const { simTournament: tournament, setResult, clearResult, simulateAll, resetAll, isSimulated } = useTournament();
   const [tab, setTab] = useState("grupos");
   const [group, setGroup] = useState("A");
 

@@ -69,7 +69,7 @@ function StepCard({ step }: { step: RouteStep }) {
 }
 
 export function TeamRoute() {
-  const { tournament, simulateAll } = useTournament();
+  const { simTournament: tournament, simulateAll } = useTournament();
   const [code, setCode] = useState("BRA");
 
   const route = useMemo(() => getTeamRoute(tournament, code), [tournament, code]);

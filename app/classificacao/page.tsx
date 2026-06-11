@@ -12,7 +12,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { cn } from "@/lib/utils";
 
 export default function ClassificacaoPage() {
-  const { tournament, isSimulated } = useTournament();
+  const { tournament } = useTournament();
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
@@ -20,14 +20,7 @@ export default function ClassificacaoPage() {
         eyebrow="Fase de grupos"
         icon={<ListOrdered size={24} />}
         title="Classificação"
-        description="Tabela dos 12 grupos. Avançam os 2 primeiros de cada grupo e os 8 melhores terceiros colocados."
-        action={
-          isSimulated ? (
-            <Badge tone="gold">
-              <Info size={12} /> Cenário simulado
-            </Badge>
-          ) : undefined
-        }
+        description="Tabela oficial dos 12 grupos. Avançam os 2 primeiros de cada grupo e os 8 melhores terceiros colocados."
       />
 
       {/* legend */}

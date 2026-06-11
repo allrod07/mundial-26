@@ -1,18 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { GitMerge, Trophy, Info, Sparkles } from "lucide-react";
+import { GitMerge, Trophy, Info } from "lucide-react";
 import { useTournament } from "@/components/providers/TournamentProvider";
 import { Bracket } from "@/components/bracket/Bracket";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Badge } from "@/components/ui/Badge";
 import { Flag } from "@/components/ui/Flag";
 import { TEAM_MAP } from "@/lib/data/teams";
 import { winnerOf } from "@/lib/engine/simulate";
 import { motion } from "framer-motion";
 
 export default function ChaveamentoPage() {
-  const { tournament, isSimulated } = useTournament();
+  const { tournament } = useTournament();
   const final = tournament.matchMap["FINAL"];
   const champion = final?.status === "encerrado" ? winnerOf(final) : null;
   const championTeam = champion ? TEAM_MAP[champion] : null;
@@ -23,8 +22,7 @@ export default function ChaveamentoPage() {
         eyebrow="Mata-mata"
         icon={<GitMerge size={24} />}
         title="Chaveamento"
-        description="Do 16-avos de final à decisão do título. O chaveamento se preenche conforme os grupos terminam e os confrontos são definidos."
-        action={isSimulated ? <Badge tone="gold"><Sparkles size={12} /> Cenário simulado</Badge> : undefined}
+        description="Do 16-avos de final à decisão do título. O chaveamento oficial se preenche conforme os grupos terminam e os confrontos reais são definidos."
       />
 
       {championTeam && (
@@ -53,11 +51,11 @@ export default function ChaveamentoPage() {
         <div className="mt-5 flex items-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-pitch-500/5 px-4 py-3 text-sm text-ink-500">
           <Info size={16} className="shrink-0 text-pitch-500" />
           <span>
-            Os confrontos do mata-mata serão definidos ao fim da fase de grupos. Abra o{" "}
+            Os confrontos do mata-mata se preenchem aqui conforme a fase de grupos real termina. Para testar cenários, use o{" "}
             <Link href="/simulador" className="font-semibold text-pitch-600 hover:underline dark:text-pitch-300">
               simulador
             </Link>{" "}
-            e clique em “Simular tudo” para gerar o chaveamento completo.
+            — lá você projeta o chaveamento sem afetar esta página.
           </span>
         </div>
       )}
