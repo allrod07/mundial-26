@@ -23,3 +23,16 @@ export const CITIES: City[] = [
 export const CITY_MAP: Record<string, City> = Object.fromEntries(
   CITIES.map((c) => [c.id, c]),
 );
+
+// Horas a SOMAR ao horário local da sede para obter o horário de Brasília
+// (junho/2026: Brasília = UTC−3, sem horário de verão).
+//   Leste dos EUA/Canadá (EDT, UTC−4) → +1
+//   Central (CDT, UTC−5)              → +2
+//   México (UTC−6, sem DST)           → +3
+//   Pacífico (PDT, UTC−7)             → +4
+export const BRT_DELTA: Record<string, number> = {
+  nyc: 1, atl: 1, mia: 1, bos: 1, phi: 1, tor: 1,
+  dal: 2, hou: 2, kc: 2,
+  mex: 3, gdl: 3, mty: 3,
+  la: 4, sf: 4, sea: 4, van: 4,
+};

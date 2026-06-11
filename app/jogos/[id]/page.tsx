@@ -20,12 +20,14 @@ import { VersusBar } from "@/components/ui/StatBar";
 import { Tabs } from "@/components/ui/Tabs";
 import { Select } from "@/components/ui/Select";
 import { PlayerAvatar } from "@/components/ui/PlayerAvatar";
-import { fmtDate, fmtTime } from "@/lib/format";
+import { fmtDate, fmtKickoff } from "@/lib/format";
+import { useTz } from "@/store/useTimezone";
 
 const FORM_OPTIONS = FORMATIONS.map((f) => ({ value: f.key, label: f.name }));
 
 export default function MatchPage({ params }: { params: { id: string } }) {
   const { tournament, liveEvents, liveStats } = useTournament();
+  const tz = useTz();
   const match = tournament.matchMap[params.id];
   const events = (liveEvents[params.id]?.length ? liveEvents[params.id] : match?.events) ?? [];
 
@@ -93,7 +95,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
           <div className="mb-5 flex items-center justify-between">
             <Badge tone={match.stage === "Grupos" ? "ink" : "gold"}>{stageLabel}</Badge>
             <div className="flex items-center gap-2">
-              {live ? <LiveBadge minute={match.minute} /> : decided ? <Badge tone="pitch">Encerrado</Badge> : <Badge tone="ink"><Clock size={11} /> {fmtTime(match.date)}</Badge>}
+              {live ? <LiveBadge minute={match.minute} /> : decided ? <Badge tone="pitch">Encerrado</Badge> : <Badge tone="ink"><Clock size={11} /> {fmtKickoff(match.date, match.cityId, tz)}</Badge>}
               <FavoriteButton kind="match" id={match.id} size={18} />
             </div>
           </div>
@@ -116,7 +118,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-ink-400">
-            <span className="flex items-center gap-1.5"><CalendarDays size={13} /> {fmtDate(match.date)} · {fmtTime(match.date)}</span>
+            <span className="flex items-center gap-1.5"><CalendarDays size={13} /> {fmtDate(match.date)} · {fmtKickoff(match.date, match.cityId, tz)}</span>
             {city && <span className="flex items-center gap-1.5"><MapPin size={13} /> {city.stadium}, {city.name} {city.countryFlag}</span>}
           </div>
         </div>

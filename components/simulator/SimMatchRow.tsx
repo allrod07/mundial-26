@@ -5,7 +5,8 @@ import { TEAM_MAP } from "@/lib/data/teams";
 import { useTournament } from "@/components/providers/TournamentProvider";
 import { Flag } from "@/components/ui/Flag";
 import { Minus, Plus, RotateCcw } from "lucide-react";
-import { fmtTime } from "@/lib/format";
+import { fmtKickoff } from "@/lib/format";
+import { useTz } from "@/store/useTimezone";
 
 function Stepper({ value, onChange, accent }: { value: number; onChange: (v: number) => void; accent?: boolean }) {
   return (
@@ -33,6 +34,7 @@ function Stepper({ value, onChange, accent }: { value: number; onChange: (v: num
 
 export function SimMatchRow({ match }: { match: Match }) {
   const { overrides, setResult, clearResult } = useTournament();
+  const tz = useTz();
   const ov = overrides[match.id];
   const knockout = match.stage !== "Grupos";
 
@@ -98,7 +100,7 @@ export function SimMatchRow({ match }: { match: Match }) {
       )}
 
       {!ov && match.status === "agendado" && (
-        <div className="mt-0.5 text-center text-[10px] text-ink-400">{fmtTime(match.date)} · não disputado</div>
+        <div className="mt-0.5 text-center text-[10px] text-ink-400">{fmtKickoff(match.date, match.cityId, tz)} · não disputado</div>
       )}
     </div>
   );

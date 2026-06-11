@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import type { Match } from "@/lib/types";
 import { TEAM_MAP } from "@/lib/data/teams";
@@ -5,7 +7,8 @@ import { CITY_MAP } from "@/lib/data/cities";
 import { Flag } from "@/components/ui/Flag";
 import { Badge, LiveBadge } from "@/components/ui/Badge";
 import { FavoriteButton } from "@/components/ui/FavoriteButton";
-import { fmtTime, fmtDay } from "@/lib/format";
+import { fmtKickoff, fmtDay } from "@/lib/format";
+import { useTz } from "@/store/useTimezone";
 import { cn } from "@/lib/utils";
 import { MapPin } from "lucide-react";
 
@@ -54,6 +57,7 @@ export function MatchCard({
   showDay?: boolean;
   className?: string;
 }) {
+  const tz = useTz();
   const city = CITY_MAP[match.cityId];
   const finished = match.status === "encerrado";
   const live = match.status === "ao-vivo";
@@ -84,7 +88,7 @@ export function MatchCard({
           ) : finished ? (
             <Badge tone="pitch">Encerrado</Badge>
           ) : (
-            <span className="text-xs font-semibold text-ink-400">{fmtTime(match.date)}</span>
+            <span className="text-xs font-semibold text-ink-400">{fmtKickoff(match.date, match.cityId, tz)}</span>
           )}
           <FavoriteButton kind="match" id={match.id} size={15} className="-mr-1.5 p-1.5" />
         </div>
