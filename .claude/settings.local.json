@@ -24,7 +24,8 @@
       "Bash(curl -sS --ssl-no-revoke -m 25 \"https://mundial-26-delta.vercel.app/api/results?nocache=$\\(date +%s\\)\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
       "mcp__Supabase__list_projects",
       "mcp__Supabase__list_tables",
-      "mcp__Supabase__execute_sql"
+      "mcp__Supabase__execute_sql",
+      "mcp__Supabase__apply_migration"
     ]
   }
 }

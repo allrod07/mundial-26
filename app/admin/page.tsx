@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Lock, ShieldCheck, ListOrdered, GitMerge, Info, Loader2 } from "lucide-react";
+import { Lock, ShieldCheck, ListOrdered, GitMerge, Info, Loader2, Trophy } from "lucide-react";
 import type { MatchEvent, MatchResultMap } from "@/lib/types";
 import { buildTournament } from "@/lib/engine/tournament";
 import { GROUPS, TEAM_MAP } from "@/lib/data/teams";
@@ -112,12 +113,17 @@ export default function AdminPage() {
         title="Preenchimento dos resultados"
         description="Os resultados e eventos que você salvar aqui vão para o banco (Supabase) e aparecem para todos os visitantes — o site entra em modo AO VIVO."
         action={
-          <button
-            onClick={() => { setAuthed(false); setPassword(""); try { sessionStorage.removeItem("m26:admin"); } catch {} }}
-            className="rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-bold text-ink-500 hover:text-red-500"
-          >
-            Sair
-          </button>
+          <div className="flex gap-2">
+            <Link href="/admin/bolao" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-bold text-ink-500 transition-colors hover:border-pitch-500/40 hover:text-pitch-600 dark:hover:text-pitch-300">
+              <Trophy size={15} /> Bolão
+            </Link>
+            <button
+              onClick={() => { setAuthed(false); setPassword(""); try { sessionStorage.removeItem("m26:admin"); } catch {} }}
+              className="rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-bold text-ink-500 hover:text-red-500"
+            >
+              Sair
+            </button>
+          </div>
         }
       />
 
