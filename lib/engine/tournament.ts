@@ -68,7 +68,29 @@ function fillEvents(m: Match, full = true): MatchEvent[] {
   );
 }
 
-function resolveGroupMatch(m: Match, overrides: MatchResultMap, fabricate: boolean) {
+/**
+ * Eventos de uma partida com resultado. Usa os eventos REAIS informados
+ * (`provided`, ex.: gols digitados no /admin) quando existirem; só fabrica
+ * autores quando `fabricateEvents` está ligado (ex.: simulador). Em modo ao
+ * vivo, gols sem autor informado simplesmente não viram artilheiro.
+ */
+function eventsFor(
+  m: Match,
+  provided: Record<string, MatchEvent[]> | undefined,
+  fabricateEvents: boolean,
+): MatchEvent[] {
+  const e = provided?.[m.id];
+  if (e) return e;
+  return fabricateEvents ? fillEvents(m) : [];
+}
+
+function resolveGroupMatch(
+  m: Match,
+  overrides: MatchResultMap,
+  fabricate: boolean,
+  providedEvents: Record<string, MatchEvent[]> | undefined,
+  fabricateEvents: boolean,
+) {
   const kickoff = new Date(m.date).getTime();
   const now = NOW.getTime();
   const ov = overrides[m.id];
@@ -77,7 +99,7 @@ function resolveGroupMatch(m: Match, overrides: MatchResultMap, fabricate: boole
     m.homeGoals = ov.homeGoals;
     m.awayGoals = ov.awayGoals;
     m.status = "encerrado";
-    m.events = fillEvents(m);
+    m.events = eventsFor(m, providedEvents, fabricateEvents);
     return;
   }
 
@@ -95,7 +117,7 @@ function resolveGroupMatch(m: Match, overrides: MatchResultMap, fabricate: boole
     m.homeGoals = s.homeGoals;
     m.awayGoals = s.awayGoals;
     m.status = "encerrado";
-    m.events = fillEvents(m);
+    m.events = eventsFor(m, providedEvents, fabricateEvents);
     return;
   }
 
@@ -149,7 +171,12 @@ function resolveSource(
   }
 }
 
-function resolveKoResult(m: Match, overrides: MatchResultMap) {
+function resolveKoResult(
+  m: Match,
+  overrides: MatchResultMap,
+  providedEvents: Record<string, MatchEvent[]> | undefined,
+  fabricateEvents: boolean,
+) {
   const ov = overrides[m.id];
   if (!ov || !m.homeCode || !m.awayCode) return;
   m.homeGoals = ov.homeGoals;
@@ -166,19 +193,21 @@ function resolveKoResult(m: Match, overrides: MatchResultMap) {
     }
   }
   m.status = "encerrado";
-  m.events = fillEvents(m);
+  m.events = eventsFor(m, providedEvents, fabricateEvents);
 }
 
 export function buildTournament(
   overrides: MatchResultMap = {},
-  opts: { fabricate?: boolean } = {},
+  opts: { fabricate?: boolean; events?: Record<string, MatchEvent[]>; fabricateEvents?: boolean } = {},
 ): ResolvedTournament {
   const fabricate = opts.fabricate ?? false;
+  const providedEvents = opts.events;
+  const fabricateEvents = opts.fabricateEvents ?? fabricate;
   const matches: Match[] = BASE_MATCHES.map((m) => ({ ...m, events: [] }));
   const matchMap: Record<string, Match> = Object.fromEntries(matches.map((m) => [m.id, m]));
 
   for (const m of matches) {
-    if (m.stage === "Grupos") resolveGroupMatch(m, overrides, fabricate);
+    if (m.stage === "Grupos") resolveGroupMatch(m, overrides, fabricate, providedEvents, fabricateEvents);
   }
 
   const standings = computeGroupStandings(matches);
@@ -202,7 +231,7 @@ export function buildTournament(
     const src = KO_SOURCES[def.id];
     m.homeCode = resolveSource(src.home, "home", def.id, standings, thirdAssignment, groupDone, matchMap);
     m.awayCode = resolveSource(src.away, "away", def.id, standings, thirdAssignment, groupDone, matchMap);
-    resolveKoResult(m, overrides);
+    resolveKoResult(m, overrides, providedEvents, fabricateEvents);
   }
 
   const scorers = aggregateScorers(matches);

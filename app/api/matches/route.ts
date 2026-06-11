@@ -15,7 +15,9 @@ interface EventInput {
   minute: number;
   type: string;
   teamCode: string | null;
+  playerId?: string | null;
   playerName?: string | null;
+  assistPlayerId?: string | null;
   assistName?: string | null;
 }
 
@@ -82,7 +84,9 @@ export async function POST(req: Request) {
         minute: e.minute,
         type: e.type,
         team_code: e.teamCode,
+        player_id: e.playerId ?? null,
         player_name: e.playerName ?? null,
+        assist_player_id: e.assistPlayerId ?? null,
         assist_name: e.assistName ?? null,
       }));
       const { error: evErr } = await sb.from("match_events").insert(rows);

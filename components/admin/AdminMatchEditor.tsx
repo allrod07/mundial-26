@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Match, MatchEvent } from "@/lib/types";
+import type { Match, MatchEvent, Player } from "@/lib/types";
 import { TEAM_MAP } from "@/lib/data/teams";
 import { Flag } from "@/components/ui/Flag";
+import { PlayerSelect } from "@/components/admin/PlayerSelect";
 import { Minus, Plus, Save, Trash2, Check, Loader2, Goal, Square } from "lucide-react";
 
 const EVENT_TYPES = [
@@ -58,9 +59,23 @@ export function AdminMatchEditor({
   // novo evento
   const [evSide, setEvSide] = useState<"home" | "away">("home");
   const [evType, setEvType] = useState("gol");
-  const [evPlayer, setEvPlayer] = useState("");
-  const [evAssist, setEvAssist] = useState("");
+  const [evPlayer, setEvPlayer] = useState<Player | null>(null);
+  const [evAssist, setEvAssist] = useState<Player | null>(null);
   const [evMin, setEvMin] = useState("");
+
+  // Quem marcou: em gol-contra é um jogador do time adversário; nos demais
+  // casos, do próprio lado. A assistência é sempre do lado escolhido.
+  const evScorerTeam =
+    evType === "gol-contra"
+      ? evSide === "home" ? match.awayCode : match.homeCode
+      : evSide === "home" ? match.homeCode : match.awayCode;
+  const evAssistTeam = evSide === "home" ? match.homeCode : match.awayCode;
+
+  // trocar de lado / alternar gol-contra muda a seleção: limpa o jogador.
+  useEffect(() => {
+    setEvPlayer(null);
+    setEvAssist(null);
+  }, [evScorerTeam]);
 
   // Os dados salvos (result/events) chegam do /api/results de forma assíncrona,
   // depois da montagem. Sem sincronizar, os campos ficariam presos no estado
@@ -91,15 +106,20 @@ export function AdminMatchEditor({
 
   const addEvent = () => {
     const minute = parseInt(evMin, 10);
-    if (!evPlayer.trim() || isNaN(minute)) return;
-    const teamCode = evSide === "home" ? match.homeCode! : match.awayCode!;
+    if (!evPlayer || isNaN(minute) || !evScorerTeam) return;
     setEvs((l) =>
-      [...l, { minute, type: evType as MatchEvent["type"], teamCode, playerId: "", playerName: evPlayer.trim(), assistName: evAssist.trim() || undefined }].sort(
-        (a, b) => a.minute - b.minute,
-      ),
+      [...l, {
+        minute,
+        type: evType as MatchEvent["type"],
+        teamCode: evScorerTeam,
+        playerId: evPlayer.id,
+        playerName: evPlayer.name,
+        assistPlayerId: evAssist?.id,
+        assistName: evAssist?.name,
+      }].sort((a, b) => a.minute - b.minute),
     );
-    setEvPlayer("");
-    setEvAssist("");
+    setEvPlayer(null);
+    setEvAssist(null);
     setEvMin("");
   };
 
@@ -117,7 +137,7 @@ export function AdminMatchEditor({
       awayGoals: ag,
       homePens: isDraw ? hp : null,
       awayPens: isDraw ? ap : null,
-      events: evs.map((e) => ({ minute: e.minute, type: e.type, teamCode: e.teamCode, playerName: e.playerName, assistName: e.assistName })),
+      events: evs.map((e) => ({ minute: e.minute, type: e.type, teamCode: e.teamCode, playerId: e.playerId || null, playerName: e.playerName ?? null, assistPlayerId: e.assistPlayerId || null, assistName: e.assistName ?? null })),
     };
     try {
       const res = await fetch("/api/matches", {
@@ -205,9 +225,19 @@ export function AdminMatchEditor({
           <select value={evType} onChange={(e) => setEvType(e.target.value)} className="rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-1.5 py-1 text-xs">
             {EVENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-          <input value={evPlayer} onChange={(e) => setEvPlayer(e.target.value)} placeholder="Jogador" className="w-28 rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-xs" />
+          <PlayerSelect
+            teamCode={evScorerTeam}
+            value={evPlayer?.id ?? null}
+            onChange={setEvPlayer}
+            placeholder={evType === "amarelo" || evType === "vermelho" ? "Jogador" : "Autor do gol"}
+          />
           {(evType === "gol" || evType === "penalti") && (
-            <input value={evAssist} onChange={(e) => setEvAssist(e.target.value)} placeholder="Assist. (opc.)" className="w-24 rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-xs" />
+            <PlayerSelect
+              teamCode={evAssistTeam}
+              value={evAssist?.id ?? null}
+              onChange={setEvAssist}
+              placeholder="Assistência (opc.)"
+            />
           )}
           <input value={evMin} onChange={(e) => setEvMin(e.target.value)} placeholder="min" inputMode="numeric" className="w-12 rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-xs" />
           <button onClick={addEvent} className="rounded-lg bg-pitch-500/15 px-2 py-1 text-xs font-bold text-pitch-600 dark:text-pitch-300">+ add</button>

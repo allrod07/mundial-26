@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Trophy } from "lucide-react";
+import { Menu, X, Trophy, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { GlobalSearch } from "./GlobalSearch";
 import { DataSourceBadge } from "./DataSourceBadge";
 
-const NAV = [
+const NAV: { href: string; label: string; admin?: boolean }[] = [
   { href: "/", label: "Início" },
   { href: "/calendario", label: "Calendário" },
   { href: "/classificacao", label: "Classificação" },
@@ -20,6 +20,7 @@ const NAV = [
   { href: "/projecoes", label: "Projeções" },
   { href: "/comparar", label: "Comparar" },
   { href: "/simulador", label: "Simulador" },
+  { href: "/admin", label: "Admin", admin: true },
 ];
 
 export function Header() {
@@ -60,7 +61,10 @@ export function Header() {
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-              <span className="relative z-10">{item.label}</span>
+              <span className="relative z-10 inline-flex items-center gap-1">
+                {item.admin && <ShieldCheck size={13} />}
+                {item.label}
+              </span>
             </Link>
           ))}
         </nav>
@@ -100,7 +104,10 @@ export function Header() {
                       : "hover:bg-ink-500/5",
                   )}
                 >
-                  {item.label}
+                  <span className="inline-flex items-center gap-1.5">
+                    {item.admin && <ShieldCheck size={14} />}
+                    {item.label}
+                  </span>
                 </Link>
               ))}
             </div>
