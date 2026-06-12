@@ -119,6 +119,22 @@ export async function POST(req: Request) {
 
   const sb = supabaseAdmin();
   const now = new Date().toISOString();
+
+  // Snapshot do estado anterior dos jogos (antes do upsert) para evitar
+  // refetch de eventos/estatísticas em partidas já encerradas e populadas —
+  // economiza quota da API-Football a cada execução do cron.
+  const matchIds = mapping.map((m) => m.matchId);
+  const prevStatus: Record<string, string | null> = {};
+  const hasEvents = new Set<string>();
+  if (matchIds.length) {
+    const [{ data: prev }, { data: prevEvents }] = await Promise.all([
+      sb.from("matches").select("id,status").in("id", matchIds),
+      sb.from("match_events").select("match_id").in("match_id", matchIds),
+    ]);
+    for (const r of prev ?? []) prevStatus[r.id] = r.status ?? null;
+    for (const e of prevEvents ?? []) hasEvents.add(e.match_id);
+  }
+
   const rows = mapping.map(({ matchId, fx, home, away }) => {
     const m = t.matchMap[matchId];
     return {
@@ -146,9 +162,17 @@ export async function POST(req: Request) {
   }
 
   let eventCount = 0;
+  let skipped = 0;
   if (withEvents) {
     for (const { matchId, fx } of mapping) {
-      if (mapStatus(fx.fixture.status.short) === "agendado") continue;
+      const newStatus = mapStatus(fx.fixture.status.short);
+      if (newStatus === "agendado") continue;
+      // Idempotência: se o jogo já estava encerrado E já tem eventos no banco,
+      // não vale gastar requisição com ele de novo (rate-limit / custo).
+      if (newStatus === "encerrado" && prevStatus[matchId] === "encerrado" && hasEvents.has(matchId)) {
+        skipped++;
+        continue;
+      }
       try {
         const evs = await fetchFixtureEvents(fx.fixture.id);
         const mapped = mapEvents(evs);
@@ -166,11 +190,16 @@ export async function POST(req: Request) {
   }
 
   await sb.from("sync_state").upsert(
-    { id: 1, last_sync: now, source: "api-football", note: `${rows.length} jogos · ${eventCount} eventos` },
+    {
+      id: 1,
+      last_sync: now,
+      source: "api-football",
+      note: `${rows.length} jogos · ${eventCount} eventos${skipped ? ` · ${skipped} ignorados (idempotente)` : ""}`,
+    },
     { onConflict: "id" },
   );
 
-  return NextResponse.json({ ok: true, fixtures: fixtures.length, mapped: rows.length, events: eventCount });
+  return NextResponse.json({ ok: true, fixtures: fixtures.length, mapped: rows.length, events: eventCount, skipped });
 }
 
 export async function GET(req: Request) {
