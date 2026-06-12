@@ -241,9 +241,9 @@ function scoreOne(
     }
   }
   if (groupResolved && pred?.brazilGroupPoints != null && facts.groupPoints != null) {
-    const diff = Math.abs(pred.brazilGroupPoints - facts.groupPoints);
-    if (diff === 0) { points += 8; breakdown.groupPoints = 8; brazilHits++; overallHits++; }
-    else if (diff === 1) { points += 4; breakdown.groupPoints = 4; brazilHits++; overallHits++; }
+    if (pred.brazilGroupPoints === facts.groupPoints) {
+      points += 8; breakdown.groupPoints = 8; brazilHits++; overallHits++;
+    }
   }
 
   let stageCorrect = false;

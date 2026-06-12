@@ -205,7 +205,7 @@ export default function BolaoPage() {
             <ul className="space-y-1.5">
               <li><b>Jogos do Brasil:</b> acertar o resultado (vitória/empate/derrota) vale <b>+3</b>; placar exato vale <b>+5</b>.</li>
               <li><b>Colocação do Brasil no grupo</b> (1º, 2º, 3º classificado ou eliminado): <b>+10</b> se acertar.</li>
-              <li><b>Pontos do Brasil na fase de grupos:</b> exato <b>+8</b>; errar por 1 <b>+4</b>.</li>
+              <li><b>Pontos do Brasil na fase de grupos:</b> só exato vale <b>+8</b>.</li>
               <li><b>Até onde o Brasil vai:</b> exato <b>+15</b>; trocar Campeão↔Vice <b>+5</b>.</li>
               <li><b>Campeão da Copa:</b> acertar o campeão <b>+25</b>; o vice <b>+10</b> (ambos <b>+35</b>).</li>
             </ul>
