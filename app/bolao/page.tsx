@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Trophy, Medal, ShieldCheck, ChevronDown, Goal, Activity, Info, Loader2, Settings, Gift, Printer,
+  Trophy, Medal, ShieldCheck, ChevronDown, Goal, Activity, Info, Loader2, Settings, Gift, Printer, ScrollText,
 } from "lucide-react";
 import { useTournament } from "@/components/providers/TournamentProvider";
 import { TEAM_MAP } from "@/lib/data/teams";
@@ -58,6 +58,9 @@ export default function BolaoPage() {
         description="Pontue acertando a campanha do Brasil na Copa. Simples e equilibrado: todo mundo briga até a final, entendendo muito ou pouco de futebol."
         action={
           <div className="flex flex-wrap gap-2">
+            <Link href="/bolao/regras" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-bold text-ink-500 transition-colors hover:border-pitch-500/40 hover:text-pitch-600 dark:hover:text-pitch-300">
+              <ScrollText size={15} /> Regras
+            </Link>
             <Link href="/bolao/impressao" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-bold text-ink-500 transition-colors hover:border-pitch-500/40 hover:text-pitch-600 dark:hover:text-pitch-300">
               <Printer size={15} /> PDF
             </Link>
