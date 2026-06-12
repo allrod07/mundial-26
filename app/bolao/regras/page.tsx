@@ -98,8 +98,7 @@ export default function BolaoRegrasPage() {
           <Table
             rows={[
               ["1️⃣ Lugar do Brasil no grupo (1º, 2º, 3º classificado ou eliminado)", "+10"],
-              ["📈 Pontos do Brasil na fase de grupos — exato", "+8"],
-              ["📈 Pontos do Brasil na fase de grupos — errou por 1", "+4"],
+              ["📈 Pontos do Brasil na fase de grupos (só exato vale)", "+8"],
               ["🚀 Até onde o Brasil vai — exato", "+15"],
               ["🚀 Até onde o Brasil vai — trocou campeão ↔ vice", "+5"],
               ["🏆 Campeão da Copa", "+25"],

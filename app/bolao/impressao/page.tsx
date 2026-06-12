@@ -121,7 +121,7 @@ export default function BolaoImpressaoPage() {
         {results.length === 0 && <p className="py-6 text-center text-sm text-ink-400">Nenhum participante cadastrado.</p>}
 
         <footer className="mt-4 border-t border-[var(--border)] pt-2 text-center text-[10px] text-ink-400">
-          Mundial &apos;26 · Bolão da Família — placar exato +5, resultado +3, colocação no grupo +10, pontos no grupo +8/+4, fase +15/+5, campeão +25, vice +10.
+          Mundial &apos;26 · Bolão da Família — placar exato +5, resultado +3, colocação no grupo +10, pontos no grupo +8, fase +15/+5, campeão +25, vice +10.
         </footer>
       </div>
     </div>
