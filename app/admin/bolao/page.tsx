@@ -248,8 +248,15 @@ function ParticipantEditor({
   const [champion, setChampion] = useState(prediction?.champion ?? "");
   const [vice, setVice] = useState(prediction?.vice ?? "");
   const [savingPred, setSavingPred] = useState<"idle" | "saving" | "ok">("idle");
+  const [predError, setPredError] = useState("");
+
+  const sameTeam = !!champion && !!vice && champion === vice;
+  const gpInvalid = gp !== "" && (!Number.isInteger(gp) || gp < 0 || gp > 9);
 
   const savePred = async () => {
+    setPredError("");
+    if (sameTeam) { setPredError("Campeão e vice precisam ser seleções diferentes."); return; }
+    if (gpInvalid) { setPredError("Pontos no grupo: 0 a 9."); return; }
     setSavingPred("saving");
     try {
       await onSavePred({
@@ -293,7 +300,19 @@ function ParticipantEditor({
                 </select>
               </Field>
               <Field label="Pontos na fase de grupos (0–9)">
-                <input type="number" min={0} max={9} value={gp} disabled={globalLocked} onChange={(e) => setGp(e.target.value === "" ? "" : Number(e.target.value))} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60" />
+                <input
+                  type="number"
+                  min={0}
+                  max={9}
+                  value={gp}
+                  disabled={globalLocked}
+                  onChange={(e) => {
+                    if (e.target.value === "") { setGp(""); return; }
+                    const n = Math.max(0, Math.min(9, Math.floor(Number(e.target.value) || 0)));
+                    setGp(n);
+                  }}
+                  className={`w-full rounded border bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60 ${gpInvalid ? "border-red-500" : "border-[var(--border)]"}`}
+                />
               </Field>
               <Field label="Até onde o Brasil vai">
                 <select value={stage} disabled={globalLocked} onChange={(e) => setStage(e.target.value as BrazilStage)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60">
@@ -302,13 +321,18 @@ function ParticipantEditor({
                 </select>
               </Field>
               <div className="grid grid-cols-2 gap-2">
-                <Field label="Campeão da Copa"><TeamSelect value={champion} onChange={setChampion} disabled={globalLocked} /></Field>
-                <Field label="Vice-campeão"><TeamSelect value={vice} onChange={setVice} disabled={globalLocked} /></Field>
+                <Field label="Campeão da Copa"><TeamSelect value={champion} onChange={setChampion} disabled={globalLocked} excludeCode={vice} invalid={sameTeam} /></Field>
+                <Field label="Vice-campeão"><TeamSelect value={vice} onChange={setVice} disabled={globalLocked} excludeCode={champion} invalid={sameTeam} /></Field>
               </div>
             </div>
+            {(sameTeam || gpInvalid || predError) && (
+              <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-300">
+                ⚠️ {predError || (sameTeam ? "Campeão e vice precisam ser seleções diferentes." : "Pontos no grupo: 0 a 9.")}
+              </div>
+            )}
             {!globalLocked && (
               <div className="mt-2 flex justify-end">
-                <button onClick={savePred} disabled={savingPred === "saving"} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
+                <button onClick={savePred} disabled={savingPred === "saving" || sameTeam || gpInvalid} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
                   {savingPred === "saving" ? <Loader2 size={13} className="animate-spin" /> : savingPred === "ok" ? <Check size={13} /> : <Save size={13} />} Salvar palpites
                 </button>
               </div>
@@ -334,24 +358,51 @@ function ParticipantEditor({
 function MatchGuess({ match, current, onSave }: { match: import("@/lib/types").Match; current?: { homeGoals: number; awayGoals: number }; onSave: (h: number, a: number) => Promise<void> }) {
   const [h, setH] = useState(current?.homeGoals ?? 0);
   const [a, setA] = useState(current?.awayGoals ?? 0);
+  // `dirty` evita gravar 0×0 acidental: o botão Salvar só ativa após o admin
+  // mexer nos steppers (ou se já existe um palpite salvo e ele decide reeditar).
+  const [dirty, setDirty] = useState(false);
   const [state, setState] = useState<"idle" | "saving" | "ok">("idle");
   const locked = isLocked(matchLockEpoch(match.id));
-  useEffect(() => { setH(current?.homeGoals ?? 0); setA(current?.awayGoals ?? 0); }, [current?.homeGoals, current?.awayGoals]);
-  const save = async () => { setState("saving"); try { await onSave(h, a); setState("ok"); setTimeout(() => setState("idle"), 1200); } catch { setState("idle"); } };
+  const hasSaved = !!current;
+  useEffect(() => {
+    setH(current?.homeGoals ?? 0);
+    setA(current?.awayGoals ?? 0);
+    setDirty(false);
+  }, [current?.homeGoals, current?.awayGoals]);
+  const bump = (setter: (v: number) => void, v: number) => { setter(v); setDirty(true); };
+  const canSave = dirty && !locked;
+  const save = async () => {
+    if (!canSave) return;
+    setState("saving");
+    try { await onSave(h, a); setState("ok"); setDirty(false); setTimeout(() => setState("idle"), 1200); } catch { setState("idle"); }
+  };
   return (
     <div className={`flex items-center gap-2 rounded-lg bg-[var(--bg-elevated)] px-2 py-1.5 text-sm ${locked ? "opacity-70" : ""}`}>
       <Flag code={match.homeCode} size="xs" />
       <span className="w-9 font-semibold">{match.homeCode}</span>
-      <StepperMini value={h} onChange={setH} disabled={locked} />
+      <span className={hasSaved || dirty ? "" : "opacity-40"}>
+        <StepperMini value={h} onChange={(v) => bump(setH, v)} disabled={locked} />
+      </span>
       <span className="text-ink-300">:</span>
-      <StepperMini value={a} onChange={setA} disabled={locked} />
+      <span className={hasSaved || dirty ? "" : "opacity-40"}>
+        <StepperMini value={a} onChange={(v) => bump(setA, v)} disabled={locked} />
+      </span>
       <span className="w-9 text-right font-semibold">{match.awayCode}</span>
       <Flag code={match.awayCode} size="xs" />
       {locked ? (
         <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-300" title="Palpite encerrado (1h antes do jogo)"><Lock size={12} /> Encerrado</span>
+      ) : hasSaved && !dirty ? (
+        <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-pitch-600 dark:text-pitch-300" title="Palpite salvo">
+          <Check size={12} /> salvo
+        </span>
       ) : (
-        <button onClick={save} disabled={state === "saving"} className="ml-auto inline-flex items-center gap-1 rounded-lg bg-pitch-500/15 px-2 py-1 text-xs font-bold text-pitch-600 disabled:opacity-60 dark:text-pitch-300">
-          {state === "saving" ? <Loader2 size={12} className="animate-spin" /> : state === "ok" ? <Check size={12} /> : <Save size={12} />} {current ? "" : "Salvar"}
+        <button
+          onClick={save}
+          disabled={state === "saving" || !canSave}
+          title={!canSave ? "Toque nos botões + ou − para palpitar" : undefined}
+          className="ml-auto inline-flex items-center gap-1 rounded-lg bg-pitch-500/15 px-2 py-1 text-xs font-bold text-pitch-600 disabled:opacity-40 dark:text-pitch-300"
+        >
+          {state === "saving" ? <Loader2 size={12} className="animate-spin" /> : state === "ok" ? <Check size={12} /> : <Save size={12} />} {state === "ok" ? "" : "Salvar"}
         </button>
       )}
     </div>
@@ -367,11 +418,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function TeamSelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+function TeamSelect({ value, onChange, disabled, excludeCode, invalid }: { value: string; onChange: (v: string) => void; disabled?: boolean; excludeCode?: string; invalid?: boolean }) {
   return (
-    <select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60">
+    <select
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className={`w-full rounded border bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60 ${invalid ? "border-red-500" : "border-[var(--border)]"}`}
+    >
       <option value="">—</option>
-      {SORTED_TEAMS.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
+      {SORTED_TEAMS.map((t) => (
+        <option key={t.code} value={t.code} disabled={!!excludeCode && excludeCode === t.code && t.code !== value}>
+          {t.name}
+        </option>
+      ))}
     </select>
   );
 }
