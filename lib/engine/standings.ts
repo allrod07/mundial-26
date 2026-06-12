@@ -45,15 +45,58 @@ function applyMatch(rows: Record<string, StandingRow>, m: Match) {
   a.gd = a.gf - a.ga;
 }
 
-function compareRows(a: StandingRow, b: StandingRow, headToHead: Map<string, number>): number {
-  if (b.points !== a.points) return b.points - a.points;
-  if (b.gd !== a.gd) return b.gd - a.gd;
-  if (b.gf !== a.gf) return b.gf - a.gf;
-  // head-to-head (simplified): more wins between tied teams
-  const h2h = (headToHead.get(b.teamCode) ?? 0) - (headToHead.get(a.teamCode) ?? 0);
-  if (h2h !== 0) return h2h;
-  // fair play / FIFA ranking fallback
-  return TEAM_MAP[a.teamCode].fifaRank - TEAM_MAP[b.teamCode].fifaRank;
+interface MiniStats { pts: number; gd: number; gf: number }
+
+/** Mini-liga FIFA: aplica pts/sg/gp considerando APENAS os jogos disputados
+ * entre os times empatados (`codes`). */
+function buildMiniTable(codes: Set<string>, groupMatches: Match[]): Map<string, MiniStats> {
+  const mini = new Map<string, MiniStats>();
+  for (const code of codes) mini.set(code, { pts: 0, gd: 0, gf: 0 });
+  for (const m of groupMatches) {
+    if (m.status !== "encerrado" || m.homeGoals == null || m.awayGoals == null) continue;
+    if (!m.homeCode || !m.awayCode) continue;
+    if (!codes.has(m.homeCode) || !codes.has(m.awayCode)) continue;
+    const h = mini.get(m.homeCode)!;
+    const a = mini.get(m.awayCode)!;
+    h.gf += m.homeGoals; a.gf += m.awayGoals;
+    h.gd += m.homeGoals - m.awayGoals;
+    a.gd += m.awayGoals - m.homeGoals;
+    if (m.homeGoals > m.awayGoals) h.pts += 3;
+    else if (m.awayGoals > m.homeGoals) a.pts += 3;
+    else { h.pts++; a.pts++; }
+  }
+  return mini;
+}
+
+function tiedByOverall(a: StandingRow, b: StandingRow): boolean {
+  return a.points === b.points && a.gd === b.gd && a.gf === b.gf;
+}
+
+/** Reordena clusters de times com pts/sg/gp idênticos usando a mini-liga
+ * entre eles (regra FIFA: pts, sg e gp considerando só os confrontos diretos),
+ * caindo para FIFA Ranking quando o confronto direto também empata. */
+function applyHeadToHead(arr: StandingRow[], groupMatches: Match[]): StandingRow[] {
+  let i = 0;
+  while (i < arr.length) {
+    let j = i + 1;
+    while (j < arr.length && tiedByOverall(arr[i], arr[j])) j++;
+    if (j - i > 1) {
+      const tied = arr.slice(i, j);
+      const codes = new Set(tied.map((r) => r.teamCode));
+      const mini = buildMiniTable(codes, groupMatches);
+      tied.sort((x, y) => {
+        const mx = mini.get(x.teamCode)!;
+        const my = mini.get(y.teamCode)!;
+        if (my.pts !== mx.pts) return my.pts - mx.pts;
+        if (my.gd !== mx.gd) return my.gd - mx.gd;
+        if (my.gf !== mx.gf) return my.gf - mx.gf;
+        return TEAM_MAP[x.teamCode].fifaRank - TEAM_MAP[y.teamCode].fifaRank;
+      });
+      arr.splice(i, tied.length, ...tied);
+    }
+    i = j;
+  }
+  return arr;
 }
 
 export function computeGroupStandings(matches: Match[]): Record<string, StandingRow[]> {
@@ -65,18 +108,13 @@ export function computeGroupStandings(matches: Match[]): Record<string, Standing
     for (const m of groupMatches) applyMatch(rows, m);
 
     const arr = Object.values(rows);
-    // head-to-head points among the group (wins count)
-    const h2h = new Map<string, number>();
-    for (const m of groupMatches) {
-      if (m.status !== "encerrado" || m.homeGoals == null || m.awayGoals == null) continue;
-      if (m.homeGoals > m.awayGoals) h2h.set(m.homeCode!, (h2h.get(m.homeCode!) ?? 0) + 3);
-      else if (m.awayGoals > m.homeGoals) h2h.set(m.awayCode!, (h2h.get(m.awayCode!) ?? 0) + 3);
-      else {
-        h2h.set(m.homeCode!, (h2h.get(m.homeCode!) ?? 0) + 1);
-        h2h.set(m.awayCode!, (h2h.get(m.awayCode!) ?? 0) + 1);
-      }
-    }
-    arr.sort((a, b) => compareRows(a, b, h2h));
+    arr.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      if (b.gf !== a.gf) return b.gf - a.gf;
+      return 0;
+    });
+    applyHeadToHead(arr, groupMatches);
     arr.forEach((r, i) => (r.rank = i + 1));
     byGroup[group] = arr;
   }
