@@ -48,14 +48,29 @@ export async function POST(req: Request) {
       if (!participant_id) return NextResponse.json({ error: "participantId ausente" }, { status: 400 });
       if (isLocked(GLOBAL_LOCK_EPOCH))
         return NextResponse.json({ error: "Apostas encerradas (passou de 1h antes do 1º jogo do Brasil)." }, { status: 403 });
+
+      const champion_code = (b.champion as string) || null;
+      const vice_code = (b.vice as string) || null;
+      if (champion_code && vice_code && champion_code === vice_code)
+        return NextResponse.json({ error: "Campeão e vice precisam ser seleções diferentes." }, { status: 400 });
+
+      // Clamp 0..9 nos pontos do Brasil no grupo (3 vitórias = 9 pts máx.).
+      let brazil_group_points: number | null = null;
+      if (b.brazilGroupPoints != null && b.brazilGroupPoints !== "") {
+        const n = Number(b.brazilGroupPoints);
+        if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 9)
+          return NextResponse.json({ error: "Pontos no grupo precisa ser um inteiro entre 0 e 9." }, { status: 400 });
+        brazil_group_points = n;
+      }
+
       const { error } = await sb.from("pool_predictions").upsert(
         {
           participant_id,
-          brazil_group_finish: (b.brazilGroupFinish as string) ?? null,
-          brazil_group_points: b.brazilGroupPoints == null ? null : Number(b.brazilGroupPoints),
-          brazil_stage: (b.brazilStage as string) ?? null,
-          champion_code: (b.champion as string) ?? null,
-          vice_code: (b.vice as string) ?? null,
+          brazil_group_finish: (b.brazilGroupFinish as string) || null,
+          brazil_group_points,
+          brazil_stage: (b.brazilStage as string) || null,
+          champion_code,
+          vice_code,
           updated_at: now,
         },
         { onConflict: "participant_id" },
@@ -70,8 +85,14 @@ export async function POST(req: Request) {
       if (!participant_id || !match_id) return NextResponse.json({ error: "dados incompletos" }, { status: 400 });
       if (isLocked(matchLockEpoch(match_id)))
         return NextResponse.json({ error: "Palpite encerrado (falta menos de 1h para o jogo do Brasil)." }, { status: 403 });
+
+      const home_goals = Number(b.homeGoals ?? 0);
+      const away_goals = Number(b.awayGoals ?? 0);
+      if (!Number.isInteger(home_goals) || !Number.isInteger(away_goals) || home_goals < 0 || home_goals > 20 || away_goals < 0 || away_goals > 20)
+        return NextResponse.json({ error: "Placar precisa ser um inteiro entre 0 e 20." }, { status: 400 });
+
       const { error } = await sb.from("pool_match_predictions").upsert(
-        { participant_id, match_id, home_goals: Number(b.homeGoals ?? 0), away_goals: Number(b.awayGoals ?? 0), updated_at: now },
+        { participant_id, match_id, home_goals, away_goals, updated_at: now },
         { onConflict: "participant_id,match_id" },
       );
       if (error) throw error;
