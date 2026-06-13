@@ -9,9 +9,14 @@ import {
   scorePool, STAGE_LABEL, GROUP_FINISH_LABEL, type PoolData,
 } from "@/lib/engine/pool";
 import { fmtDateShort } from "@/lib/format";
+import { computePrizes, fmtBRL, ENTRY_VALUE_BRL, PRIZE_SPLIT } from "@/lib/data/pool-config";
 
 const EMPTY: PoolData = { participants: [], predictions: {}, matchPredictions: {} };
 const MEDALS = ["🥇", "🥈", "🥉"];
+
+function fmtGenerated(d: Date): string {
+  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }) + " (BRT)";
+}
 
 export default function BolaoImpressaoPage() {
   const { tournament } = useTournament();
@@ -23,6 +28,19 @@ export default function BolaoImpressaoPage() {
 
   const { facts, results } = useMemo(() => scorePool(tournament, data), [tournament, data]);
 
+  // Snapshot da prestação de contas: arrecadado, prêmios e último jogo do
+  // Brasil considerado (data + adversário) — para o PDF ser pós-jogo.
+  const paidCount = data.participants.filter((p) => p.paid).length;
+  const prizes = computePrizes(paidCount);
+  const finishedBrazil = facts.matches.filter((m) => m.status === "encerrado");
+  const lastBrazil = finishedBrazil[finishedBrazil.length - 1];
+  const lastBrazilOpp = lastBrazil
+    ? lastBrazil.homeCode === "BRA"
+      ? lastBrazil.awayCode
+      : lastBrazil.homeCode
+    : null;
+  const generatedAt = useMemo(() => fmtGenerated(new Date()), [data, tournament]);
+
   return (
     <div className="mx-auto max-w-5xl px-4 pb-12 sm:px-6">
       {/* toolbar — não imprime */}
@@ -33,8 +51,8 @@ export default function BolaoImpressaoPage() {
         <div className="mt-3 flex flex-col gap-3 rounded-3xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-pitch-600 dark:text-pitch-400">Bolão da Família</div>
-            <h1 className="text-2xl font-extrabold">Apostas e pontuação — PDF</h1>
-            <p className="mt-1 text-sm text-ink-400">Clique em imprimir e escolha “Salvar como PDF”.</p>
+            <h1 className="text-2xl font-extrabold">Prestação de contas — PDF</h1>
+            <p className="mt-1 text-sm text-ink-400">Clique em imprimir e escolha “Salvar como PDF”. Pode mandar no grupo da família após cada jogo do Brasil.</p>
           </div>
           <button onClick={() => window.print()} className="inline-flex shrink-0 items-center gap-2 rounded-full gradient-pitch px-5 py-3 text-sm font-bold text-white shadow-glow">
             <Printer size={17} /> Imprimir / PDF
@@ -44,12 +62,40 @@ export default function BolaoImpressaoPage() {
 
       {/* folha imprimível */}
       <div className="paper mt-6 rounded-2xl border border-[var(--border)] p-5 print:mt-0 print:rounded-none print:border-0 print:p-0">
-        <header className="mb-4 border-b border-[var(--border)] pb-3 text-center">
+        <header className="mb-4 border-b border-[var(--border)] pb-3">
           <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-pitch-700"><Trophy size={14} /> Bolão da Família · Copa 2026</div>
-          <h2 className="mt-1 text-xl font-extrabold">Apostas e pontuação</h2>
-          <p className="mt-1 text-[11px] text-ink-500">
+          <h2 className="mt-1 text-center text-xl font-extrabold">Prestação de contas</h2>
+          <p className="mt-1 text-center text-[11px] text-ink-500">
+            Gerado em <b>{generatedAt}</b>
+            {lastBrazil && lastBrazilOpp ? (
+              <> · Atualizado após <b>BRA × {lastBrazilOpp} ({lastBrazil.homeGoals}–{lastBrazil.awayGoals}) em {fmtDateShort(lastBrazil.date)}</b></>
+            ) : (
+              <> · Aguardando o 1º jogo do Brasil</>
+            )}
+          </p>
+          <p className="mt-1 text-center text-[11px] text-ink-500">
             Campeão (oficial): {facts.champion ? TEAM_MAP[facts.champion]?.name : "a definir"} · Brasil: {facts.actualGroupFinish ? GROUP_FINISH_LABEL[facts.actualGroupFinish] : "fase de grupos"}{facts.stageReached ? ` · chegou até ${STAGE_LABEL[facts.stageReached]}` : ""}
           </p>
+
+          {/* Bloco financeiro */}
+          <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-[var(--border)] p-2 text-[11px] sm:grid-cols-4">
+            <div>
+              <div className="text-ink-400">Participantes pagantes</div>
+              <div className="text-sm font-extrabold">{paidCount} <span className="font-normal text-ink-400">× {fmtBRL(ENTRY_VALUE_BRL)}</span></div>
+            </div>
+            <div>
+              <div className="text-ink-400">Total arrecadado</div>
+              <div className="text-sm font-extrabold text-pitch-700">{fmtBRL(prizes.pot)}</div>
+            </div>
+            <div>
+              <div className="text-ink-400">🥇 1º · {Math.round(PRIZE_SPLIT.first * 100)}%</div>
+              <div className="text-sm font-extrabold">{fmtBRL(prizes.first)}</div>
+            </div>
+            <div>
+              <div className="text-ink-400">🥈 2º · {Math.round(PRIZE_SPLIT.second * 100)}% · 🥉 3º · {Math.round(PRIZE_SPLIT.third * 100)}%</div>
+              <div className="text-sm font-extrabold">{fmtBRL(prizes.second)} · {fmtBRL(prizes.third)}</div>
+            </div>
+          </div>
         </header>
 
         {/* ranking resumido */}

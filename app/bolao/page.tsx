@@ -16,14 +16,10 @@ import { Card } from "@/components/ui/Card";
 import { Flag } from "@/components/ui/Flag";
 import { PoolEvolutionChart } from "@/components/pool/PoolEvolutionChart";
 import { fmtDateShort } from "@/lib/format";
+import { computePrizes, fmtBRL, PRIZE_SPLIT } from "@/lib/data/pool-config";
 
 const EMPTY: PoolData = { participants: [], predictions: {}, matchPredictions: {} };
 const MEDALS = ["🥇", "🥈", "🥉"];
-const PRIZES = [
-  { icon: "🥇", title: "Campeão do Bolão", desc: "Prêmio principal" },
-  { icon: "🥈", title: "Vice", desc: "Caixa de chocolates" },
-  { icon: "🥉", title: "3º lugar", desc: "Caixa de bombons" },
-];
 
 export default function BolaoPage() {
   const { tournament } = useTournament();
@@ -71,22 +67,35 @@ export default function BolaoPage() {
         }
       />
 
-      {/* Prêmios */}
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {PRIZES.map((p, i) => {
-          const who = results[i];
-          return (
-            <Card key={p.title} className="flex items-center gap-3 p-4">
-              <span className="text-3xl">{p.icon}</span>
-              <div className="min-w-0">
-                <div className="text-sm font-extrabold">{p.title}</div>
-                <div className="truncate text-xs text-ink-400">{p.desc}</div>
-                {who && <div className="mt-0.5 truncate text-xs font-bold text-pitch-600 dark:text-pitch-300">{who.participant.emoji ?? "👤"} {who.participant.name}</div>}
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+      {/* Prêmios — calculados a partir do nº de participantes pagantes. */}
+      {(() => {
+        const paidCount = data.participants.filter((p) => p.paid).length;
+        const prizes = computePrizes(paidCount);
+        const prizeBoxes = [
+          { icon: "🥇", title: "Campeão do Bolão", value: prizes.first, pct: PRIZE_SPLIT.first },
+          { icon: "🥈", title: "Vice", value: prizes.second, pct: PRIZE_SPLIT.second },
+          { icon: "🥉", title: "3º lugar", value: prizes.third, pct: PRIZE_SPLIT.third },
+        ];
+        return (
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {prizeBoxes.map((p, i) => {
+              const who = results[i];
+              return (
+                <Card key={p.title} className="flex items-center gap-3 p-4">
+                  <span className="text-3xl">{p.icon}</span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-extrabold">{p.title}</div>
+                    <div className="truncate text-xs text-ink-400">
+                      {paidCount > 0 ? <><b className="text-pitch-600 dark:text-pitch-300">{fmtBRL(p.value)}</b> · {Math.round(p.pct * 100)}% do bolo</> : <>{Math.round(p.pct * 100)}% do bolo arrecadado</>}
+                    </div>
+                    {who && <div className="mt-0.5 truncate text-xs font-bold text-pitch-600 dark:text-pitch-300">{who.participant.emoji ?? "👤"} {who.participant.name}</div>}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Situação real do Brasil */}
       <Card className="mt-4 p-4">
