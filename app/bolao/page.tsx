@@ -8,13 +8,15 @@ import {
 import { useTournament } from "@/components/providers/TournamentProvider";
 import { TEAM_MAP } from "@/lib/data/teams";
 import {
-  scorePool, poolEvolution, BADGES, STAGE_LABEL, GROUP_FINISH_LABEL, BRAZIL,
+  scorePool, poolEvolution, roundHighlights, leadershipCount, biggestMovers, poolConsensus,
+  BADGES, STAGE_LABEL, GROUP_FINISH_LABEL, BRAZIL,
   type PoolData, type PoolResult, type BadgeKey,
 } from "@/lib/engine/pool";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Flag } from "@/components/ui/Flag";
 import { PoolEvolutionChart } from "@/components/pool/PoolEvolutionChart";
+import { ConsensusCard, HighlightsPanel } from "@/components/pool/PoolHighlights";
 import { fmtDateShort } from "@/lib/format";
 import { computePrizes, fmtBRL, PRIZE_SPLIT } from "@/lib/data/pool-config";
 
@@ -38,6 +40,10 @@ export default function BolaoPage() {
 
   const { facts, results } = useMemo(() => scorePool(tournament, data), [tournament, data]);
   const evo = useMemo(() => poolEvolution(tournament, data), [tournament, data]);
+  const highlights = useMemo(() => roundHighlights(data, evo), [data, evo]);
+  const leaders = useMemo(() => leadershipCount(data, evo), [data, evo]);
+  const movers = useMemo(() => biggestMovers(data, evo), [data, evo]);
+  const consensus = useMemo(() => poolConsensus(tournament, data), [tournament, data]);
 
   const badgeOwners = useMemo(() => {
     const map: Record<BadgeKey, PoolResult[]> = { rei: [], mestre: [], quente: [], frio: [] };
@@ -108,6 +114,13 @@ export default function BolaoPage() {
         </div>
       </Card>
 
+      {/* Palpite da galera — próximo jogo do Brasil */}
+      {!loading && results.length > 0 && consensus && (
+        <div className="mt-4">
+          <ConsensusCard c={consensus} />
+        </div>
+      )}
+
       {loading ? (
         <div className="mt-10 flex items-center justify-center gap-2 text-sm text-ink-400">
           <Loader2 size={16} className="animate-spin" /> carregando bolão…
@@ -123,6 +136,14 @@ export default function BolaoPage() {
         </div>
       ) : (
         <>
+          {/* Destaques (Craque da Rodada · Mais vezes na ponta · Subiu/Desceu) */}
+          {(highlights.some((h) => h.winners.length > 0) || leaders.length > 0 || movers.climber || movers.faller) && (
+            <div className="mt-6">
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-bold"><Activity size={16} className="text-pitch-500" /> Destaques</h2>
+              <HighlightsPanel highlights={highlights} leaders={leaders} movers={movers} />
+            </div>
+          )}
+
           {/* Medalhas/conquistas */}
           {Object.values(badgeOwners).some((a) => a.length) && (
             <div className="mt-6">

@@ -335,3 +335,150 @@ export function poolEvolution(t: ResolvedTournament, data: PoolData): PoolEvolut
   }
   return { checkpoints, series };
 }
+
+// ── Destaques (animação da galera) ───────────────────────────────────────────
+// Tudo derivado do PoolEvolution — zero consulta extra ao banco.
+
+function participantMap(data: PoolData): Record<string, PoolParticipant> {
+  const m: Record<string, PoolParticipant> = {};
+  for (const p of data.participants) m[p.id] = p;
+  return m;
+}
+
+/** 🌟 Craque da Rodada: quem mais pontuou em CADA jogo do Brasil (mais recente
+ * primeiro). Cada rodada pode ter um vencedor diferente do líder geral. */
+export interface RoundHighlight {
+  label: string; // adversário (código)
+  date: number;
+  topPoints: number;
+  winners: PoolParticipant[];
+}
+export function roundHighlights(data: PoolData, evo: PoolEvolution): RoundHighlight[] {
+  const info = participantMap(data);
+  const out: RoundHighlight[] = [];
+  evo.checkpoints.forEach((c, i) => {
+    let topPoints = 0;
+    const gains: { id: string; gain: number }[] = [];
+    for (const p of data.participants) {
+      const cur = evo.series[p.id]?.[i] ?? 0;
+      const prev = i > 0 ? evo.series[p.id]?.[i - 1] ?? 0 : 0;
+      const gain = cur - prev;
+      gains.push({ id: p.id, gain });
+      if (gain > topPoints) topPoints = gain;
+    }
+    const winners = topPoints > 0 ? gains.filter((g) => g.gain === topPoints).map((g) => info[g.id]).filter(Boolean) : [];
+    out.push({ label: c.label, date: c.date, topPoints, winners });
+  });
+  return out.reverse();
+}
+
+/** 👑 Quadro de liderança: quantas vezes cada um foi o líder geral ao fim de
+ * cada jogo do Brasil. */
+export interface LeadershipRow {
+  participant: PoolParticipant;
+  timesLeading: number;
+}
+export function leadershipCount(data: PoolData, evo: PoolEvolution): LeadershipRow[] {
+  const info = participantMap(data);
+  const counts: Record<string, number> = {};
+  evo.checkpoints.forEach((_, i) => {
+    let max = 0;
+    for (const p of data.participants) max = Math.max(max, evo.series[p.id]?.[i] ?? 0);
+    if (max <= 0) return; // ninguém pontuou ainda nesse marco
+    for (const p of data.participants) if ((evo.series[p.id]?.[i] ?? 0) === max) counts[p.id] = (counts[p.id] ?? 0) + 1;
+  });
+  return Object.entries(counts)
+    .map(([id, timesLeading]) => ({ participant: info[id], timesLeading }))
+    .filter((r) => r.participant)
+    .sort((a, b) => b.timesLeading - a.timesLeading || a.participant.name.localeCompare(b.participant.name));
+}
+
+/** 🚀 Maior escalada / 📉 maior tombo: variação de posição entre os dois
+ * últimos jogos do Brasil. */
+export interface MoverRow {
+  participant: PoolParticipant;
+  from: number;
+  to: number;
+  delta: number; // positivo = subiu posições
+}
+export function biggestMovers(data: PoolData, evo: PoolEvolution): { climber?: MoverRow; faller?: MoverRow } {
+  if (evo.checkpoints.length < 2 || data.participants.length < 2) return {};
+  const last = evo.checkpoints.length - 1;
+  const prev = last - 1;
+  const rankAt = (i: number): Record<string, number> => {
+    const sorted = [...data.participants].sort(
+      (a, b) => (evo.series[b.id]?.[i] ?? 0) - (evo.series[a.id]?.[i] ?? 0) || a.name.localeCompare(b.name),
+    );
+    const r: Record<string, number> = {};
+    sorted.forEach((p, idx) => (r[p.id] = idx + 1));
+    return r;
+  };
+  const rl = rankAt(last), rp = rankAt(prev);
+  const rows: MoverRow[] = data.participants.map((p) => ({
+    participant: p, from: rp[p.id], to: rl[p.id], delta: rp[p.id] - rl[p.id],
+  }));
+  let climber: MoverRow | undefined;
+  let faller: MoverRow | undefined;
+  for (const r of rows) {
+    if (r.delta > 0 && (!climber || r.delta > climber.delta)) climber = r;
+    if (r.delta < 0 && (!faller || r.delta < faller.delta)) faller = r;
+  }
+  return { climber, faller };
+}
+
+/** 🗳️ Palpite da galera: consenso para o PRÓXIMO jogo do Brasil. Antes da trava
+ * mostra só quantos já palpitaram (não revela os placares, pra ninguém copiar);
+ * depois da trava revela o placar mais votado e a aposta da maioria. */
+export interface PoolConsensus {
+  match: Match;
+  revealed: boolean; // o jogo já travou? então pode mostrar os palpites
+  predicted: number; // quantos já palpitaram
+  totalPaid: number; // total de participantes pagantes
+  pending: PoolParticipant[]; // pagantes que ainda não palpitaram
+  topScore?: { homeCode: string; awayCode: string; home: number; away: number; count: number };
+  brazilWin: number; // fração 0..1
+  brazilDraw: number;
+  brazilLoss: number;
+}
+export function poolConsensus(
+  t: ResolvedTournament,
+  data: PoolData,
+  now: number = Date.now(),
+): PoolConsensus | null {
+  const facts = brazilFacts(t);
+  const next = facts.matches.find((m) => m.status !== "encerrado" && m.homeCode && m.awayCode);
+  if (!next) return null;
+  const revealed = isLocked(matchLockEpoch(next.id), now);
+  const brazilHome = next.homeCode === BRAZIL;
+
+  let win = 0, draw = 0, loss = 0, predicted = 0;
+  const scoreCounts = new Map<string, { home: number; away: number; count: number }>();
+  const pending: PoolParticipant[] = [];
+  for (const p of data.participants) {
+    const mp = data.matchPredictions[p.id]?.[next.id];
+    if (!mp) { if (p.paid) pending.push(p); continue; }
+    predicted++;
+    const key = `${mp.homeGoals}-${mp.awayGoals}`;
+    const e = scoreCounts.get(key) ?? { home: mp.homeGoals, away: mp.awayGoals, count: 0 };
+    e.count++; scoreCounts.set(key, e);
+    const bra = brazilHome ? mp.homeGoals : mp.awayGoals;
+    const opp = brazilHome ? mp.awayGoals : mp.homeGoals;
+    if (bra > opp) win++; else if (bra < opp) loss++; else draw++;
+  }
+
+  let top: { home: number; away: number; count: number } | undefined;
+  for (const e of scoreCounts.values()) if (!top || e.count > top.count) top = e;
+  const totalPaid = data.participants.filter((p) => p.paid).length;
+
+  return {
+    match: next,
+    revealed,
+    predicted,
+    totalPaid,
+    pending,
+    topScore: top ? { homeCode: next.homeCode!, awayCode: next.awayCode!, ...top } : undefined,
+    brazilWin: predicted ? win / predicted : 0,
+    brazilDraw: predicted ? draw / predicted : 0,
+    brazilLoss: predicted ? loss / predicted : 0,
+  };
+}
