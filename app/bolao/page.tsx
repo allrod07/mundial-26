@@ -44,7 +44,7 @@ export default function BolaoPage() {
   const evo = useMemo(() => poolEvolution(tournament, data), [tournament, data]);
 
   const badgeOwners = useMemo(() => {
-    const map: Record<BadgeKey, PoolResult[]> = { rei: [], mestre: [], raiz: [], quente: [], frio: [] };
+    const map: Record<BadgeKey, PoolResult[]> = { rei: [], mestre: [], quente: [], frio: [] };
     for (const r of results) for (const b of r.badges) map[b].push(r);
     return map;
   }, [results]);
@@ -172,8 +172,11 @@ export default function BolaoPage() {
                   <span className="hidden w-10 shrink-0 text-center text-sm text-ink-500 sm:block">{r.resultCount}</span>
                   <span className="w-12 shrink-0 stat-num text-center text-lg font-extrabold text-pitch-600 dark:text-pitch-300">{r.points}</span>
                   <span className="flex shrink-0 items-center justify-end gap-1.5 text-xs text-ink-400 sm:w-24">
-                    {r.prediction?.champion && <span title="Palpite de campeão"><Flag code={r.prediction.champion} size="xs" /></span>}
-                    {r.prediction?.brazilStage && <span className="hidden rounded-full bg-ink-500/10 px-2 py-0.5 font-semibold lg:inline">🇧🇷 {STAGE_LABEL[r.prediction.brazilStage]}</span>}
+                    {r.prediction?.brazilChampion != null && (
+                      <span className="hidden rounded-full bg-ink-500/10 px-2 py-0.5 font-semibold sm:inline" title="Palpite: Brasil campeão?">
+                        🇧🇷 {r.prediction.brazilChampion ? "Campeão" : "Não"}
+                      </span>
+                    )}
                     <ChevronDown size={15} className={`transition-transform ${expanded === r.participant.id ? "rotate-180" : ""}`} />
                   </span>
                 </button>
@@ -203,14 +206,11 @@ export default function BolaoPage() {
         {showRules && (
           <div className="border-t border-[var(--border)] px-4 py-3 text-sm text-ink-500">
             <ul className="space-y-1.5">
-              <li><b>Jogos do Brasil:</b> acertar o resultado (vitória/empate/derrota) vale <b>+3</b>; placar exato vale <b>+5</b>.</li>
-              <li><b>Colocação do Brasil no grupo</b> (1º, 2º, 3º classificado ou eliminado): <b>+10</b> se acertar.</li>
-              <li><b>Pontos do Brasil na fase de grupos:</b> só exato vale <b>+8</b>.</li>
-              <li><b>Até onde o Brasil vai:</b> exato <b>+15</b>; trocar Campeão↔Vice <b>+5</b>.</li>
-              <li><b>Campeão da Copa:</b> acertar o campeão <b>+25</b>; o vice <b>+10</b> (ambos <b>+35</b>).</li>
+              <li><b>Jogos do Brasil:</b> acertar o resultado (vitória/empate/derrota) vale <b>+3</b>; cravar o placar exato vale <b>+6</b>.</li>
+              <li><b>O Brasil vai ser campeão?</b> Apostar <b>Sim</b> e o Brasil ser campeão: <b>+15</b>. Apostar <b>Não</b> e o Brasil não ser campeão: <b>+5</b>.</li>
             </ul>
             <p className="mt-3 text-xs text-ink-400">
-              <Gift size={12} className="mr-1 inline" /> Desempate: mais placares exatos → acertou o campeão → acertou a fase do Brasil → mais resultados certos → sorteio.
+              <Gift size={12} className="mr-1 inline" /> Desempate: mais placares exatos → mais resultados certos → sorteio.
             </p>
           </div>
         )}
@@ -258,13 +258,13 @@ function ParticipantDetail({ r }: { r: PoolResult }) {
           {r.matchDetails.length === 0 && <div className="text-ink-400">Brasil ainda não tem jogos definidos.</div>}
         </div>
       </div>
-      {/* bônus */}
+      {/* palpite único + sequências */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
-        <Bonus label="Colocação no grupo" pick={p?.brazilGroupFinish ? GROUP_FINISH_LABEL[p.brazilGroupFinish] : "—"} pts={bd.groupFinish} />
-        <Bonus label="Pontos no grupo" pick={p?.brazilGroupPoints != null ? String(p.brazilGroupPoints) : "—"} pts={bd.groupPoints} />
-        <Bonus label="Fase do Brasil" pick={p?.brazilStage ? STAGE_LABEL[p.brazilStage] : "—"} pts={bd.stage} />
-        <Bonus label="Campeão" pick={p?.champion ? (TEAM_MAP[p.champion]?.name ?? p.champion) : "—"} pts={bd.champion} />
-        <Bonus label="Vice" pick={p?.vice ? (TEAM_MAP[p.vice]?.name ?? p.vice) : "—"} pts={bd.vice} />
+        <Bonus
+          label="Brasil campeão?"
+          pick={p?.brazilChampion == null ? "—" : p.brazilChampion ? "🏆 Sim" : "🙅 Não"}
+          pts={bd.champion}
+        />
         <Bonus label="Sequências" pick={`🔥${r.hotStreak} · 😅${r.coldStreak}`} pts={0} hidePts />
       </div>
     </div>

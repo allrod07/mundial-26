@@ -14,7 +14,7 @@ export async function GET() {
   try {
     const [{ data: participants }, { data: preds }, { data: mps }] = await Promise.all([
       sb.from("pool_participants").select("id,name,emoji,paid").order("created_at"),
-      sb.from("pool_predictions").select("participant_id,brazil_group_finish,brazil_group_points,brazil_stage,champion_code,vice_code"),
+      sb.from("pool_predictions").select("participant_id,brazil_champion"),
       sb.from("pool_match_predictions").select("participant_id,match_id,home_goals,away_goals"),
     ]);
 
@@ -22,11 +22,7 @@ export async function GET() {
     for (const p of preds ?? []) {
       predictions[p.participant_id] = {
         participantId: p.participant_id,
-        brazilGroupFinish: p.brazil_group_finish ?? null,
-        brazilGroupPoints: p.brazil_group_points ?? null,
-        brazilStage: p.brazil_stage ?? null,
-        champion: p.champion_code ?? null,
-        vice: p.vice_code ?? null,
+        brazilChampion: p.brazil_champion ?? null,
       };
     }
     const matchPredictions: PoolData["matchPredictions"] = {};

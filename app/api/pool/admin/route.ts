@@ -49,30 +49,14 @@ export async function POST(req: Request) {
       if (isLocked(GLOBAL_LOCK_EPOCH))
         return NextResponse.json({ error: "Apostas encerradas (passou de 1h antes do 1º jogo do Brasil)." }, { status: 403 });
 
-      const champion_code = (b.champion as string) || null;
-      const vice_code = (b.vice as string) || null;
-      if (champion_code && vice_code && champion_code === vice_code)
-        return NextResponse.json({ error: "Campeão e vice precisam ser seleções diferentes." }, { status: 400 });
-
-      // Clamp 0..9 nos pontos do Brasil no grupo (3 vitórias = 9 pts máx.).
-      let brazil_group_points: number | null = null;
-      if (b.brazilGroupPoints != null && b.brazilGroupPoints !== "") {
-        const n = Number(b.brazilGroupPoints);
-        if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 9)
-          return NextResponse.json({ error: "Pontos no grupo precisa ser um inteiro entre 0 e 9." }, { status: 400 });
-        brazil_group_points = n;
-      }
+      // Palpite único: "o Brasil vai ser campeão?" — true | false | null.
+      let brazil_champion: boolean | null = null;
+      if (b.brazilChampion === true || b.brazilChampion === false) brazil_champion = b.brazilChampion;
+      else if (b.brazilChampion != null && b.brazilChampion !== "")
+        return NextResponse.json({ error: "Palpite de campeão inválido (sim/não)." }, { status: 400 });
 
       const { error } = await sb.from("pool_predictions").upsert(
-        {
-          participant_id,
-          brazil_group_finish: (b.brazilGroupFinish as string) || null,
-          brazil_group_points,
-          brazil_stage: (b.brazilStage as string) || null,
-          champion_code,
-          vice_code,
-          updated_at: now,
-        },
+        { participant_id, brazil_champion, updated_at: now },
         { onConflict: "participant_id" },
       );
       if (error) throw error;

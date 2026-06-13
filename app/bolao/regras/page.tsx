@@ -60,10 +60,10 @@ export default function BolaoRegrasPage() {
         {/* 1) Como funciona */}
         <Section icon="🎯" title="Como funciona">
           <p className="text-sm">
-            O bolão é todinho focado na campanha do <b>Brasil 🇧🇷</b>: você palpita os
-            placares dos jogos da Seleção e faz alguns <b>palpites grandes</b> antes da
-            Copa começar (campeão, até onde o Brasil vai, etc.). No fim, o ranking soma
-            tudo e cria as medalhas das conquistas.
+            O bolão é todinho focado no <b>Brasil 🇧🇷</b> e é bem simples: você só palpita
+            os <b>placares dos jogos da Seleção</b> e responde <b>uma única pergunta</b>{" "}
+            antes da Copa começar — &ldquo;o Brasil vai ser campeão?&rdquo;. No fim, o
+            ranking soma tudo e cria as medalhas das conquistas.
           </p>
           <p className="mt-2 text-sm text-ink-500">
             O ranking, as conquistas e o gráfico de evolução ficam no site, atualizando
@@ -83,32 +83,29 @@ export default function BolaoRegrasPage() {
         </Section>
 
         {/* 3) Pontuação */}
-        <Section icon="📊" title="Como pontua">
-          <h3 className="mt-1 text-sm font-extrabold">⚽ Jogos do Brasil (vale para CADA jogo)</h3>
+        <Section icon="📊" title="Como pontua (é só isso!)">
+          <h3 className="mt-1 text-sm font-extrabold">⚽ Cada jogo do Brasil</h3>
           <Table
             rows={[
-              ["✅ Acertou o resultado (vitória / empate / derrota)", "+3"],
-              ["🎯 Placar exato (ex.: foi 2×1, você cravou 2×1)", "+5"],
+              ["✅ Acertou o resultado (Brasil ganha, empata ou perde)", "+3"],
+              ["🎯 Cravou o placar exato (ex.: foi 2×1, você botou 2×1)", "+6"],
             ]}
           />
 
-          <h3 className="mt-4 text-sm font-extrabold">
-            🇧🇷 Palpites grandes (uma vez só, antes da Copa começar)
-          </h3>
+          <h3 className="mt-4 text-sm font-extrabold">🏆 O palpitão da Copa (uma vez só)</h3>
+          <p className="mt-1 text-sm text-ink-500">
+            Antes da Copa começar, você responde uma única pergunta:{" "}
+            <b>&ldquo;O Brasil vai ser campeão?&rdquo;</b>
+          </p>
           <Table
             rows={[
-              ["1️⃣ Lugar do Brasil no grupo (1º, 2º, 3º classificado ou eliminado)", "+10"],
-              ["📈 Pontos do Brasil na fase de grupos (só exato vale)", "+8"],
-              ["🚀 Até onde o Brasil vai — exato", "+15"],
-              ["🚀 Até onde o Brasil vai — trocou campeão ↔ vice", "+5"],
-              ["🏆 Campeão da Copa", "+25"],
-              ["🥈 Vice da Copa", "+10"],
+              ["🏆 Apostou SIM e o Brasil foi campeão", "+15"],
+              ["🙅 Apostou NÃO e o Brasil não foi campeão", "+5"],
             ]}
           />
-
           <div className="mt-3 rounded-lg bg-pitch-500/10 px-3 py-2 text-xs text-pitch-700 dark:text-pitch-300">
-            💡 <b>Quem mandar tudo nos palpites grandes</b> já leva <b>até 68 pontos</b>{" "}
-            (10 + 8 + 15 + 25 + 10). E ainda tem os jogos do Brasil pra acumular mais!
+            💡 Vale mais apostar no <b>título</b> porque é mais difícil de acontecer —
+            quem arriscar e acertar leva vantagem! E quem é realista também pontua. 😉
           </div>
         </Section>
 
@@ -117,30 +114,26 @@ export default function BolaoRegrasPage() {
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="rounded-xl border border-red-500/40 bg-red-500/8 p-3">
               <div className="text-xs font-extrabold text-red-600 dark:text-red-300">
-                🚨 Palpites grandes
-              </div>
-              <div className="mt-1 text-sm">
-                Campeão, vice, fase do Brasil, lugar no grupo e pontos no grupo:
+                🚨 O palpitão &ldquo;Brasil campeão?&rdquo;
               </div>
               <div className="mt-1.5 text-sm font-extrabold text-red-700 dark:text-red-300">
-                ⛔ TRAVAM às 18h do dia 13/06
+                ⛔ TRAVA às 18h do dia 13/06
                 <br />
                 (1h antes de Brasil × Marrocos, às 19h BRT)
               </div>
               <div className="mt-1.5 text-[11px] text-ink-500">
-                Depois disso ⛔ não dá pra mudar — nem campeão, nem fase, nem nada.
+                Depois disso ⛔ não dá mais pra mudar.
               </div>
             </div>
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/8 p-3">
               <div className="text-xs font-extrabold text-amber-600 dark:text-amber-300">
-                ⏱️ Palpites jogo a jogo
+                ⏱️ Placar de cada jogo do Brasil
               </div>
-              <div className="mt-1 text-sm">Placar de cada jogo do Brasil:</div>
               <div className="mt-1.5 text-sm font-extrabold text-amber-700 dark:text-amber-300">
-                ⛔ TRAVAM 1h antes do pontapé inicial de cada jogo
+                ⛔ TRAVA 1h antes do pontapé inicial de cada jogo
               </div>
               <div className="mt-1.5 text-[11px] text-ink-500">
-                Conforme o Brasil avança no torneio, novos jogos aparecem pra palpitar.
+                Conforme o Brasil avança, novos jogos aparecem pra palpitar.
               </div>
             </div>
           </div>
@@ -159,8 +152,6 @@ export default function BolaoRegrasPage() {
         <Section icon="⚖️" title="Critério de desempate">
           <ol className="ml-5 list-decimal space-y-0.5 text-sm">
             <li>🎯 Mais placares exatos</li>
-            <li>🏆 Quem acertou o campeão</li>
-            <li>🚀 Quem acertou a fase do Brasil</li>
             <li>✅ Mais resultados certos</li>
             <li>🎲 Sorteio (na hora do churrasco)</li>
           </ol>
@@ -171,7 +162,6 @@ export default function BolaoRegrasPage() {
           <div className="grid gap-1.5 sm:grid-cols-2">
             <BadgeLine icon="🏆" label="Rei dos Placares" desc="Mais placares exatos" />
             <BadgeLine icon="🎯" label="Mestre dos Palpites" desc="Mais acertos no total" />
-            <BadgeLine icon="🇧🇷" label="Torcedor Raiz" desc="Mais acertos envolvendo o Brasil" />
             <BadgeLine icon="🔥" label="Mão Quente" desc="Maior sequência de acertos" />
             <BadgeLine icon="😅" label="Pé Frio" desc="Maior sequência de erros" />
           </div>

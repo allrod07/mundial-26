@@ -61,8 +61,7 @@ export default function BolaoImpressaoPage() {
               <th className="pr-2">Pago</th>
               <th className="pr-2 text-center">Exatos</th>
               <th className="pr-2 text-center">Result.</th>
-              <th className="pr-2">Campeão</th>
-              <th className="pr-2">Fase BRA</th>
+              <th className="pr-2">Brasil campeão?</th>
               <th className="text-right">Pontos</th>
             </tr>
           </thead>
@@ -74,8 +73,7 @@ export default function BolaoImpressaoPage() {
                 <td className="pr-2">{r.participant.paid ? "sim" : "não"}</td>
                 <td className="pr-2 text-center">{r.exactCount}</td>
                 <td className="pr-2 text-center">{r.resultCount}</td>
-                <td className="pr-2">{r.prediction?.champion ? TEAM_MAP[r.prediction.champion]?.name : "—"}</td>
-                <td className="pr-2">{r.prediction?.brazilStage ? STAGE_LABEL[r.prediction.brazilStage] : "—"}</td>
+                <td className="pr-2">{r.prediction?.brazilChampion == null ? "—" : r.prediction.brazilChampion ? "Sim 🏆" : "Não"}</td>
                 <td className="text-right font-extrabold">{r.points}</td>
               </tr>
             ))}
@@ -90,7 +88,7 @@ export default function BolaoImpressaoPage() {
               <span className="text-sm font-extrabold text-pitch-700">{r.points} pts</span>
             </div>
             <div className="mb-1 text-[11px] text-ink-500">
-              Campeão: <b>{r.prediction?.champion ? TEAM_MAP[r.prediction.champion]?.name : "—"}</b> · Vice: <b>{r.prediction?.vice ? TEAM_MAP[r.prediction.vice]?.name : "—"}</b> · Grupo: <b>{r.prediction?.brazilGroupFinish ? GROUP_FINISH_LABEL[r.prediction.brazilGroupFinish] : "—"}</b> · Pontos grupo: <b>{r.prediction?.brazilGroupPoints ?? "—"}</b> · Fase: <b>{r.prediction?.brazilStage ? STAGE_LABEL[r.prediction.brazilStage] : "—"}</b>
+              Palpite &ldquo;Brasil campeão?&rdquo;: <b>{r.prediction?.brazilChampion == null ? "—" : r.prediction.brazilChampion ? "Sim 🏆 (+15 se acertar)" : "Não (+5 se acertar)"}</b>
             </div>
             <table className="w-full border-collapse text-[11px]">
               <thead>
@@ -121,7 +119,7 @@ export default function BolaoImpressaoPage() {
         {results.length === 0 && <p className="py-6 text-center text-sm text-ink-400">Nenhum participante cadastrado.</p>}
 
         <footer className="mt-4 border-t border-[var(--border)] pt-2 text-center text-[10px] text-ink-400">
-          Mundial &apos;26 · Bolão da Família — placar exato +5, resultado +3, colocação no grupo +10, pontos no grupo +8, fase +15/+5, campeão +25, vice +10.
+          Mundial &apos;26 · Bolão da Família — resultado +3, placar exato +6, Brasil campeão +15 (ou +5 se apostar que não será campeão e acertar).
         </footer>
       </div>
     </div>
