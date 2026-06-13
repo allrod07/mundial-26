@@ -1,20 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Printer, ArrowLeft, Trophy } from "lucide-react";
+import {
+  ENTRY_VALUE_BRL, PRIZE_SPLIT, computePrizes, fmtBRL,
+} from "@/lib/data/pool-config";
+import type { PoolData } from "@/lib/engine/pool";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ✏️ EDITE AQUI o valor da entrada do bolão (em R$).
-// Se ficar 0, o PDF mostra "a combinar com o admin".
-const ENTRY_VALUE_BRL = 0;
-// ─────────────────────────────────────────────────────────────────────────────
-
-const fmtEntry = () =>
-  ENTRY_VALUE_BRL > 0
-    ? ENTRY_VALUE_BRL.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-    : "a combinar com o admin";
+const EMPTY_POOL: PoolData = { participants: [], predictions: {}, matchPredictions: {} };
 
 export default function BolaoRegrasPage() {
+  // Lê a contagem real de pagantes para mostrar prêmios concretos no PDF.
+  // Se não houver ninguém pago ainda, mostra só as porcentagens.
+  const [paidCount, setPaidCount] = useState(0);
+  useEffect(() => {
+    fetch("/api/pool", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : EMPTY_POOL))
+      .then((d: PoolData) => setPaidCount((d?.participants ?? []).filter((p) => p.paid).length))
+      .catch(() => {});
+  }, []);
+  const prizes = computePrizes(paidCount);
+
   return (
     <div className="mx-auto max-w-5xl px-4 pb-12 sm:px-6">
       {/* toolbar — não imprime */}
@@ -74,11 +81,11 @@ export default function BolaoRegrasPage() {
         {/* 2) Valor */}
         <Section icon="💸" title="Quanto custa entrar">
           <p className="text-sm">
-            Entrada: <b className="text-lg text-pitch-700 dark:text-pitch-300">{fmtEntry()}</b>{" "}
+            Entrada: <b className="text-lg text-pitch-700 dark:text-pitch-300">{fmtBRL(ENTRY_VALUE_BRL)}</b>{" "}
             por participante.
           </p>
           <p className="mt-1 text-xs text-ink-500">
-            Pago direto com o organizador. Quem está &ldquo;Pago ✓&rdquo; no painel disputa os prêmios.
+            Pago direto com o organizador. Quem está &ldquo;Pago ✓&rdquo; no painel disputa os prêmios. Prestação de contas no PDF do bolão após cada jogo do Brasil.
           </p>
         </Section>
 
@@ -142,10 +149,30 @@ export default function BolaoRegrasPage() {
         {/* 5) Prêmios */}
         <Section icon="🎁" title="Prêmios">
           <div className="grid gap-2 sm:grid-cols-3">
-            <Prize icon="🥇" title="1º lugar" desc="Prêmio principal" />
-            <Prize icon="🥈" title="2º lugar" desc="Caixa de chocolates" />
-            <Prize icon="🥉" title="3º lugar" desc="Caixa de bombons" />
+            <Prize
+              icon="🥇"
+              title="1º lugar"
+              desc={`${Math.round(PRIZE_SPLIT.first * 100)}% do bolo`}
+              value={paidCount > 0 ? fmtBRL(prizes.first) : undefined}
+            />
+            <Prize
+              icon="🥈"
+              title="2º lugar"
+              desc={`${Math.round(PRIZE_SPLIT.second * 100)}% do bolo`}
+              value={paidCount > 0 ? fmtBRL(prizes.second) : undefined}
+            />
+            <Prize
+              icon="🥉"
+              title="3º lugar"
+              desc={`${Math.round(PRIZE_SPLIT.third * 100)}% do bolo`}
+              value={paidCount > 0 ? fmtBRL(prizes.third) : undefined}
+            />
           </div>
+          <p className="mt-2 text-[11px] text-ink-500">
+            {paidCount > 0
+              ? <>Cálculo atual: <b>{paidCount}</b> participantes pagantes × {fmtBRL(ENTRY_VALUE_BRL)} = <b>{fmtBRL(prizes.pot)}</b> de arrecadação.</>
+              : <>Os valores em R$ aparecem aqui assim que houver participantes pagantes cadastrados no painel.</>}
+          </p>
         </Section>
 
         {/* 6) Desempate */}
@@ -220,12 +247,13 @@ function Table({ rows }: { rows: [string, string][] }) {
   );
 }
 
-function Prize({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function Prize({ icon, title, desc, value }: { icon: string; title: string; desc: string; value?: string }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-3">
       <span className="text-3xl">{icon}</span>
-      <div>
+      <div className="min-w-0">
         <div className="text-sm font-extrabold">{title}</div>
+        {value && <div className="text-base font-extrabold text-pitch-700 dark:text-pitch-300">{value}</div>}
         <div className="text-xs text-ink-500">{desc}</div>
       </div>
     </div>
