@@ -75,11 +75,10 @@ export interface PoolParticipant {
 }
 export interface PoolPrediction {
   participantId: string;
-  brazilGroupFinish?: GroupFinish | null;
-  brazilGroupPoints?: number | null;
-  brazilStage?: BrazilStage | null;
-  champion?: string | null;
-  vice?: string | null;
+  /** Palpite único da campanha: o usuário acha que o Brasil vai ser campeão?
+   * true = aposta no título (vale +15 se acertar); false = aposta que NÃO
+   * será campeão (vale +5 se acertar); null = ainda não palpitou. */
+  brazilChampion?: boolean | null;
 }
 export interface PoolData {
   participants: PoolParticipant[];
@@ -181,15 +180,17 @@ export interface PoolResult {
   prediction?: PoolPrediction;
   rank: number;
   points: number;
-  breakdown: { matches: number; groupFinish: number; groupPoints: number; stage: number; champion: number; vice: number };
+  breakdown: { matches: number; champion: number };
   exactCount: number;
   resultCount: number;
   brazilHits: number;
   overallHits: number;
   hotStreak: number;
   coldStreak: number;
-  championCorrect: boolean;
-  stageCorrect: boolean;
+  /** O palpite feito: true (campeão), false (não campeão) ou null (não palpitou). */
+  championBet?: boolean | null;
+  /** Se o palpite de campeão/não-campeão bateu com a realidade (já resolvido). */
+  championBetCorrect: boolean;
   matchDetails: PoolMatchDetail[];
   badges: BadgeKey[];
 }
@@ -208,7 +209,7 @@ function scoreOne(
   cutoff = Infinity,
 ): PoolResult {
   let points = 0, exactCount = 0, resultCount = 0, brazilHits = 0, overallHits = 0;
-  const breakdown = { matches: 0, groupFinish: 0, groupPoints: 0, stage: 0, champion: 0, vice: 0 };
+  const breakdown = { matches: 0, champion: 0 };
   const seq: boolean[] = [];
   const matchDetails: PoolMatchDetail[] = [];
 
@@ -224,8 +225,8 @@ function scoreOne(
     const exact = mp.homeGoals === rh && mp.awayGoals === ra;
     const result = Math.sign(mp.homeGoals - mp.awayGoals) === Math.sign(rh - ra);
     if (exact) {
-      points += 5; breakdown.matches += 5; exactCount++; resultCount++; brazilHits++; overallHits++;
-      seq.push(true); matchDetails.push({ match: m, pred: mp, pts: 5, kind: "exact" });
+      points += 6; breakdown.matches += 6; exactCount++; resultCount++; brazilHits++; overallHits++;
+      seq.push(true); matchDetails.push({ match: m, pred: mp, pts: 6, kind: "exact" });
     } else if (result) {
       points += 3; breakdown.matches += 3; resultCount++; brazilHits++; overallHits++;
       seq.push(true); matchDetails.push({ match: m, pred: mp, pts: 3, kind: "result" });
@@ -234,42 +235,19 @@ function scoreOne(
     }
   }
 
-  const groupResolved = facts.groupComplete && facts.lastGroupDate != null && facts.lastGroupDate <= cutoff;
-  if (groupResolved && pred?.brazilGroupFinish && facts.actualGroupFinish) {
-    if (pred.brazilGroupFinish === facts.actualGroupFinish) {
-      points += 10; breakdown.groupFinish = 10; brazilHits++; overallHits++;
-    }
-  }
-  if (groupResolved && pred?.brazilGroupPoints != null && facts.groupPoints != null) {
-    if (pred.brazilGroupPoints === facts.groupPoints) {
-      points += 8; breakdown.groupPoints = 8; brazilHits++; overallHits++;
-    }
-  }
-
-  let stageCorrect = false;
-  const stageResolved = facts.stageReached && facts.stageResolvedDate != null && facts.stageResolvedDate <= cutoff;
-  if (stageResolved && pred?.brazilStage) {
-    if (pred.brazilStage === facts.stageReached) {
-      points += 15; breakdown.stage = 15; brazilHits++; overallHits++; stageCorrect = true;
-    } else if (pred.brazilStage === "campeao" && facts.stageReached === "vice") {
-      points += 5; breakdown.stage = 5; brazilHits++; overallHits++;
-    } else if (pred.brazilStage === "vice" && facts.stageReached === "campeao") {
-      points += 5; breakdown.stage = 5; brazilHits++; overallHits++;
-    }
-  }
-
-  let championCorrect = false;
-  const finalResolved = facts.finalDate != null && facts.finalDate <= cutoff;
-  if (finalResolved && facts.champion && pred?.champion) {
-    if (pred.champion === facts.champion) {
-      points += 25; breakdown.champion = 25; overallHits++; championCorrect = true;
-      if (facts.champion === BRAZIL) brazilHits++;
-    }
-  }
-  if (finalResolved && facts.vice && pred?.vice) {
-    if (pred.vice === facts.vice) {
-      points += 10; breakdown.vice = 10; overallHits++;
-      if (facts.vice === BRAZIL) brazilHits++;
+  // ── Palpite único da campanha: "o Brasil vai ser campeão?" ─────────────────
+  // Resolve assim que o destino do Brasil é selado (stageReached preenchido):
+  //   • apostou CAMPEÃO e o Brasil foi campeão → +15
+  //   • apostou NÃO CAMPEÃO e o Brasil não foi campeão → +5
+  // Vale mais acertar o título porque, estatisticamente, é o palpite difícil.
+  let championBetCorrect = false;
+  const brazilSettled = facts.stageReached != null && facts.stageResolvedDate != null && facts.stageResolvedDate <= cutoff;
+  if (brazilSettled && pred?.brazilChampion != null) {
+    const brazilIsChampion = facts.stageReached === "campeao";
+    if (pred.brazilChampion && brazilIsChampion) {
+      points += 15; breakdown.champion = 15; brazilHits++; overallHits++; championBetCorrect = true;
+    } else if (!pred.brazilChampion && !brazilIsChampion) {
+      points += 5; breakdown.champion = 5; overallHits++; championBetCorrect = true;
     }
   }
 
@@ -277,16 +255,15 @@ function scoreOne(
     participant, prediction: pred, rank: 0, points, breakdown,
     exactCount, resultCount, brazilHits, overallHits,
     hotStreak: longestRun(seq, true), coldStreak: longestRun(seq, false),
-    championCorrect, stageCorrect, matchDetails, badges: [],
+    championBet: pred?.brazilChampion ?? null, championBetCorrect, matchDetails, badges: [],
   };
 }
 
 // ── Medalhas / conquistas ────────────────────────────────────────────────────
-export type BadgeKey = "rei" | "mestre" | "raiz" | "quente" | "frio";
+export type BadgeKey = "rei" | "mestre" | "quente" | "frio";
 export const BADGES: Record<BadgeKey, { icon: string; label: string; desc: string }> = {
   rei: { icon: "🏆", label: "Rei dos Placares", desc: "Mais placares exatos" },
   mestre: { icon: "🎯", label: "Mestre dos Palpites", desc: "Mais acertos no total" },
-  raiz: { icon: "🇧🇷", label: "Torcedor Raiz", desc: "Mais acertos envolvendo o Brasil" },
   quente: { icon: "🔥", label: "Mão Quente", desc: "Maior sequência de acertos" },
   frio: { icon: "😅", label: "Pé Frio", desc: "Maior sequência de erros" },
 };
@@ -299,7 +276,6 @@ function assignBadges(results: PoolResult[]) {
   };
   give("rei", (r) => r.exactCount);
   give("mestre", (r) => r.overallHits);
-  give("raiz", (r) => r.brazilHits);
   give("quente", (r) => r.hotStreak, 2);
   give("frio", (r) => r.coldStreak, 2);
 }
@@ -315,12 +291,12 @@ export function scorePool(t: ResolvedTournament, data: PoolData): PoolStanding {
     scoreOne(p, data.predictions[p.id], data.matchPredictions[p.id] ?? {}, facts),
   );
 
+  // Desempate: mais pontos → mais placares exatos → mais resultados certos →
+  // nome (ordem estável; o "sorteio" real fica para o churrasco da família).
   results.sort(
     (a, b) =>
       b.points - a.points ||
       b.exactCount - a.exactCount ||
-      Number(b.championCorrect) - Number(a.championCorrect) ||
-      Number(b.stageCorrect) - Number(a.stageCorrect) ||
       b.resultCount - a.resultCount ||
       a.participant.name.localeCompare(b.participant.name),
   );

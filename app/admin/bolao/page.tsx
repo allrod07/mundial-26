@@ -6,17 +6,14 @@ import {
   Lock, Trophy, UserPlus, Trash2, Save, Loader2, Check, Minus, Plus, ChevronDown, ArrowLeft,
 } from "lucide-react";
 import { useTournament } from "@/components/providers/TournamentProvider";
-import { TEAMS } from "@/lib/data/teams";
 import {
-  brazilFacts, GROUP_FINISH_OPTIONS, STAGE_OPTIONS,
-  GLOBAL_LOCK_EPOCH, matchLockEpoch, isLocked,
-  type PoolData, type PoolParticipant, type PoolPrediction, type GroupFinish, type BrazilStage,
+  brazilFacts, GLOBAL_LOCK_EPOCH, matchLockEpoch, isLocked,
+  type PoolData, type PoolParticipant, type PoolPrediction,
 } from "@/lib/engine/pool";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Flag } from "@/components/ui/Flag";
 
 const EMPTY: PoolData = { participants: [], predictions: {}, matchPredictions: {} };
-const SORTED_TEAMS = [...TEAMS].sort((a, b) => a.name.localeCompare(b.name));
 
 export default function PoolAdminPage() {
   const { tournament } = useTournament();
@@ -197,7 +194,11 @@ function AddForm({ onAdd }: { onAdd: (name: string, emoji: string, paid: boolean
   const [emoji, setEmoji] = useState("👤");
   const [paid, setPaid] = useState(true);
   const [saving, setSaving] = useState(false);
-  const EMOJIS = ["👤", "🧔", "👩", "👧", "👦", "👴", "👵", "🧑", "🤴", "👸", "🦁", "🐯", "🐶", "🐱", "⚽", "🔥"];
+  const EMOJIS = [
+    "👤", "🧔", "👩", "👧", "👦", "👴", "👵", "🧑", "🤴", "👸",
+    "👫", "👬", "👭", "💑", "👩‍❤️‍👨", "👨‍❤️‍👨", "👩‍❤️‍👩", "💏",
+    "🦁", "🐯", "🐶", "🐱", "⚽", "🔥",
+  ];
   return (
     <form
       onSubmit={async (e) => { e.preventDefault(); const n = name.trim(); if (!n) return; setSaving(true); try { await onAdd(n, emoji, paid); setName(""); } catch { /* erro no banner */ } finally { setSaving(false); } }}
@@ -242,31 +243,15 @@ function ParticipantEditor({
   onSaveMatch: (matchId: string, h: number, a: number) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
-  const [gf, setGf] = useState<GroupFinish | "">((prediction?.brazilGroupFinish as GroupFinish) ?? "");
-  const [gp, setGp] = useState<number | "">(prediction?.brazilGroupPoints ?? "");
-  const [stage, setStage] = useState<BrazilStage | "">((prediction?.brazilStage as BrazilStage) ?? "");
-  const [champion, setChampion] = useState(prediction?.champion ?? "");
-  const [vice, setVice] = useState(prediction?.vice ?? "");
+  // Palpite único: null = ainda não escolheu; true = Brasil campeão; false = não.
+  const [champ, setChamp] = useState<boolean | null>(prediction?.brazilChampion ?? null);
   const [savingPred, setSavingPred] = useState<"idle" | "saving" | "ok">("idle");
-  const [predError, setPredError] = useState("");
 
-  const sameTeam = !!champion && !!vice && champion === vice;
-  const gpInvalid = gp !== "" && (!Number.isInteger(gp) || gp < 0 || gp > 9);
-
-  const savePred = async () => {
-    setPredError("");
-    if (sameTeam) { setPredError("Campeão e vice precisam ser seleções diferentes."); return; }
-    if (gpInvalid) { setPredError("Pontos no grupo: 0 a 9."); return; }
+  const saveChamp = async (value: boolean) => {
+    setChamp(value);
     setSavingPred("saving");
     try {
-      await onSavePred({
-        participantId: participant.id,
-        brazilGroupFinish: gf || null,
-        brazilGroupPoints: gp === "" ? null : Number(gp),
-        brazilStage: stage || null,
-        champion: champion || null,
-        vice: vice || null,
-      });
+      await onSavePred({ participantId: participant.id, brazilChampion: value });
       setSavingPred("ok");
       setTimeout(() => setSavingPred("idle"), 1500);
     } catch { setSavingPred("idle"); }
@@ -286,57 +271,35 @@ function ParticipantEditor({
 
       {open && (
         <div className="space-y-4 border-t border-[var(--border)] p-3">
-          {/* palpites pré-Copa */}
+          {/* palpite único da campanha */}
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wide text-ink-400">
-              Palpites da campanha do Brasil 🇧🇷
-              {globalLocked && <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] normal-case text-amber-600 dark:text-amber-300"><Lock size={10} /> encerradas (1h antes do 1º jogo)</span>}
+              O Brasil vai ser campeão? 🇧🇷🏆
+              {globalLocked && <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] normal-case text-amber-600 dark:text-amber-300"><Lock size={10} /> encerrado (1h antes do 1º jogo)</span>}
             </div>
-            <div className={`grid grid-cols-1 gap-2 sm:grid-cols-2 ${globalLocked ? "opacity-60" : ""}`}>
-              <Field label="Colocação no grupo">
-                <select value={gf} disabled={globalLocked} onChange={(e) => setGf(e.target.value as GroupFinish)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60">
-                  <option value="">—</option>
-                  {GROUP_FINISH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </Field>
-              <Field label="Pontos na fase de grupos (0–9)">
-                <input
-                  type="number"
-                  min={0}
-                  max={9}
-                  value={gp}
-                  disabled={globalLocked}
-                  onChange={(e) => {
-                    if (e.target.value === "") { setGp(""); return; }
-                    const n = Math.max(0, Math.min(9, Math.floor(Number(e.target.value) || 0)));
-                    setGp(n);
-                  }}
-                  className={`w-full rounded border bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60 ${gpInvalid ? "border-red-500" : "border-[var(--border)]"}`}
-                />
-              </Field>
-              <Field label="Até onde o Brasil vai">
-                <select value={stage} disabled={globalLocked} onChange={(e) => setStage(e.target.value as BrazilStage)} className="w-full rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60">
-                  <option value="">—</option>
-                  {STAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </Field>
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="Campeão da Copa"><TeamSelect value={champion} onChange={setChampion} disabled={globalLocked} excludeCode={vice} invalid={sameTeam} /></Field>
-                <Field label="Vice-campeão"><TeamSelect value={vice} onChange={setVice} disabled={globalLocked} excludeCode={champion} invalid={sameTeam} /></Field>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={globalLocked}
+                onClick={() => saveChamp(true)}
+                className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors disabled:opacity-60 ${champ === true ? "border-pitch-500 bg-pitch-500/15 text-pitch-600 dark:text-pitch-300" : "border-[var(--border)] text-ink-500 hover:border-pitch-500/40"}`}
+              >
+                🏆 SIM, campeão <span className="text-[11px] font-normal text-ink-400">(+15 se acertar)</span>
+              </button>
+              <button
+                type="button"
+                disabled={globalLocked}
+                onClick={() => saveChamp(false)}
+                className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors disabled:opacity-60 ${champ === false ? "border-pitch-500 bg-pitch-500/15 text-pitch-600 dark:text-pitch-300" : "border-[var(--border)] text-ink-500 hover:border-pitch-500/40"}`}
+              >
+                🙅 NÃO será <span className="text-[11px] font-normal text-ink-400">(+5 se acertar)</span>
+              </button>
             </div>
-            {(sameTeam || gpInvalid || predError) && (
-              <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-300">
-                ⚠️ {predError || (sameTeam ? "Campeão e vice precisam ser seleções diferentes." : "Pontos no grupo: 0 a 9.")}
-              </div>
-            )}
-            {!globalLocked && (
-              <div className="mt-2 flex justify-end">
-                <button onClick={savePred} disabled={savingPred === "saving" || sameTeam || gpInvalid} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
-                  {savingPred === "saving" ? <Loader2 size={13} className="animate-spin" /> : savingPred === "ok" ? <Check size={13} /> : <Save size={13} />} Salvar palpites
-                </button>
-              </div>
-            )}
+            <div className="mt-1.5 flex h-4 items-center gap-1.5 text-[11px]">
+              {savingPred === "saving" && <span className="inline-flex items-center gap-1 text-ink-400"><Loader2 size={11} className="animate-spin" /> salvando…</span>}
+              {savingPred === "ok" && <span className="inline-flex items-center gap-1 text-pitch-600 dark:text-pitch-300"><Check size={11} /> salvo</span>}
+              {savingPred === "idle" && champ == null && <span className="text-ink-400">Toque em SIM ou NÃO para registrar o palpite.</span>}
+            </div>
           </div>
 
           {/* jogos do Brasil */}
@@ -409,29 +372,3 @@ function MatchGuess({ match, current, onSave }: { match: import("@/lib/types").M
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[11px] font-semibold text-ink-400">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function TeamSelect({ value, onChange, disabled, excludeCode, invalid }: { value: string; onChange: (v: string) => void; disabled?: boolean; excludeCode?: string; invalid?: boolean }) {
-  return (
-    <select
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      className={`w-full rounded border bg-[var(--bg-elevated)] px-2 py-1.5 text-sm disabled:opacity-60 ${invalid ? "border-red-500" : "border-[var(--border)]"}`}
-    >
-      <option value="">—</option>
-      {SORTED_TEAMS.map((t) => (
-        <option key={t.code} value={t.code} disabled={!!excludeCode && excludeCode === t.code && t.code !== value}>
-          {t.name}
-        </option>
-      ))}
-    </select>
-  );
-}
