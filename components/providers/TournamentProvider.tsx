@@ -55,17 +55,37 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // fetch the live overlay (results synced from API-Football → Supabase)
+  // Busca o overlay ao vivo (resultados sincronizados API-Football → Supabase)
+  // e mantém atualizado sozinho: re-busca a cada 30s e sempre que a aba volta
+  // ao foco. Assim placares novos aparecem sem o usuário precisar recarregar.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/results", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: LiveOverlay | null) => {
-        if (!cancelled && data && data.source === "live") setLive(data);
-      })
-      .catch(() => {});
+    const load = () => {
+      fetch("/api/results", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: LiveOverlay | null) => {
+          if (!cancelled && data && data.source === "live") setLive(data);
+        })
+        .catch(() => {});
+    };
+
+    load();
+    const interval = setInterval(() => {
+      // Só busca quando a aba está visível — evita requisições à toa em
+      // segundo plano; ao voltar ao foco, o listener abaixo já atualiza.
+      if (typeof document === "undefined" || document.visibilityState === "visible") load();
+    }, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
     return () => {
       cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, []);
 
