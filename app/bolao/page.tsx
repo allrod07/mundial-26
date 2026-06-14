@@ -30,12 +30,31 @@ export default function BolaoPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
 
+  // Carrega o bolão e mantém atualizado sozinho (a cada 30s + ao voltar à aba),
+  // para o ranking refletir os palpites/placares novos sem recarregar.
   useEffect(() => {
-    fetch("/api/pool", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : EMPTY))
-      .then((d: PoolData) => setData(d ?? EMPTY))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    const load = () =>
+      fetch("/api/pool", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : EMPTY))
+        .then((d: PoolData) => { if (!cancelled) setData(d ?? EMPTY); })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setLoading(false); });
+
+    load();
+    const interval = setInterval(() => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") load();
+    }, 30_000);
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, []);
 
   const { facts, results } = useMemo(() => scorePool(tournament, data), [tournament, data]);
