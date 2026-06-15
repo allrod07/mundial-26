@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Lock, Trophy, UserPlus, Trash2, Save, Loader2, Check, Minus, Plus, ChevronDown, ArrowLeft,
+  Lock, Trophy, UserPlus, Trash2, Save, Loader2, Check, Minus, Plus, ChevronDown, ArrowLeft, X,
 } from "lucide-react";
 import { useTournament } from "@/components/providers/TournamentProvider";
 import {
@@ -160,7 +160,9 @@ export default function PoolAdminPage() {
         }
       />
 
-      {error && <div className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-300">⚠️ {error}</div>}
+      <div aria-live="assertive" role="alert">
+        {error && <div className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-300">⚠️ {error}</div>}
+      </div>
 
       <AddForm onAdd={addParticipant} />
 
@@ -194,26 +196,54 @@ function AddForm({ onAdd }: { onAdd: (name: string, emoji: string, paid: boolean
   const [emoji, setEmoji] = useState("👤");
   const [paid, setPaid] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [fieldError, setFieldError] = useState("");
+  const [added, setAdded] = useState("");
   const EMOJIS = [
     "👤", "🧔", "👩", "👧", "👦", "👴", "👵", "🧑", "🤴", "👸",
     "👫", "👬", "👭", "💑", "👩‍❤️‍👨", "👨‍❤️‍👨", "👩‍❤️‍👩", "💏",
     "🦁", "🐯", "🐶", "🐱", "⚽", "🔥",
   ];
+  const trimmed = name.trim();
   return (
     <form
-      onSubmit={async (e) => { e.preventDefault(); const n = name.trim(); if (!n) return; setSaving(true); try { await onAdd(n, emoji, paid); setName(""); } catch { /* erro no banner */ } finally { setSaving(false); } }}
-      className="surface mt-4 flex flex-wrap items-center gap-2 rounded-2xl p-3"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const n = trimmed;
+        if (!n) { setFieldError("Informe o nome do participante."); return; }
+        if (n.length > 60) { setFieldError("Nome muito longo (máx. 60 caracteres)."); return; }
+        setFieldError(""); setAdded(""); setSaving(true);
+        try {
+          await onAdd(n, emoji, paid);
+          setName("");
+          setAdded(`${emoji} ${n} adicionado.`);
+          setTimeout(() => setAdded(""), 3000);
+        } catch { /* erro no banner global */ } finally { setSaving(false); }
+      }}
+      className="surface mt-4 rounded-2xl p-3"
     >
-      <select value={emoji} onChange={(e) => setEmoji(e.target.value)} className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-2 text-lg" aria-label="Emoji">
-        {EMOJIS.map((e) => <option key={e} value={e}>{e}</option>)}
-      </select>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do participante" className="min-w-[10rem] flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-pitch-500" />
-      <button type="button" onClick={() => setPaid((v) => !v)} title="Marcar se o participante pagou a entrada" className={`rounded-lg px-3 py-2 text-sm font-bold transition-colors ${paid ? "bg-pitch-500/15 text-pitch-600 dark:text-pitch-300" : "bg-red-500/15 text-red-500"}`}>
-        {paid ? "Pago ✓" : "Não pago"}
-      </button>
-      <button disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
-        {saving ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />} Adicionar
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <select value={emoji} onChange={(e) => setEmoji(e.target.value)} className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-2 text-lg" aria-label="Emoji do participante">
+          {EMOJIS.map((e) => <option key={e} value={e}>{e}</option>)}
+        </select>
+        <input
+          value={name}
+          onChange={(e) => { setName(e.target.value); if (fieldError) setFieldError(""); }}
+          placeholder="Nome do participante"
+          aria-label="Nome do participante"
+          aria-invalid={!!fieldError}
+          className={`min-w-[10rem] flex-1 rounded-lg border bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-pitch-500 ${fieldError ? "border-red-500/60" : "border-[var(--border)]"}`}
+        />
+        <button type="button" onClick={() => setPaid((v) => !v)} title="Marcar se o participante pagou a entrada" className={`rounded-lg px-3 py-2 text-sm font-bold transition-colors ${paid ? "bg-pitch-500/15 text-pitch-600 dark:text-pitch-300" : "bg-red-500/15 text-red-500"}`}>
+          {paid ? "Pago ✓" : "Não pago"}
+        </button>
+        <button disabled={saving || !trimmed} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+          {saving ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />} Adicionar
+        </button>
+      </div>
+      <div aria-live="polite" className="min-h-[1rem]">
+        {fieldError && <span className="text-xs font-semibold text-red-500">⚠️ {fieldError}</span>}
+        {added && !fieldError && <span className="inline-flex items-center gap-1 text-xs font-semibold text-pitch-600 dark:text-pitch-300"><Check size={12} /> {added}</span>}
+      </div>
     </form>
   );
 }
@@ -245,16 +275,24 @@ function ParticipantEditor({
   const [open, setOpen] = useState(false);
   // Palpite único: null = ainda não escolheu; true = Brasil campeão; false = não.
   const [champ, setChamp] = useState<boolean | null>(prediction?.brazilChampion ?? null);
-  const [savingPred, setSavingPred] = useState<"idle" | "saving" | "ok">("idle");
+  const [savingPred, setSavingPred] = useState<"idle" | "saving" | "ok" | "err">("idle");
+  const [predError, setPredError] = useState("");
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const saveChamp = async (value: boolean) => {
+    const prev = champ;
     setChamp(value);
     setSavingPred("saving");
+    setPredError("");
     try {
       await onSavePred({ participantId: participant.id, brazilChampion: value });
       setSavingPred("ok");
-      setTimeout(() => setSavingPred("idle"), 1500);
-    } catch { setSavingPred("idle"); }
+      setTimeout(() => setSavingPred((s) => (s === "ok" ? "idle" : s)), 2500);
+    } catch (e) {
+      setChamp(prev); // desfaz o realce otimista quando o servidor recusa
+      setSavingPred("err");
+      setPredError(e instanceof Error ? e.message : "Não foi possível salvar.");
+    }
   };
 
   return (
@@ -265,8 +303,16 @@ function ParticipantEditor({
         <button onClick={onTogglePaid} className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${participant.paid ? "bg-pitch-500/15 text-pitch-600 dark:text-pitch-300" : "bg-red-500/15 text-red-500"}`}>
           {participant.paid ? "Pago ✓" : "Não pago"}
         </button>
-        <button onClick={() => setOpen((o) => !o)} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-ink-400 hover:text-pitch-600"><ChevronDown size={16} className={`transition-transform ${open ? "rotate-180" : ""}`} /></button>
-        <button onClick={onRemove} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-ink-400 hover:text-red-500"><Trash2 size={14} /></button>
+        <button onClick={() => setOpen((o) => !o)} aria-label={open ? "Recolher palpites" : "Expandir palpites"} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-ink-400 hover:text-pitch-600"><ChevronDown size={16} className={`transition-transform ${open ? "rotate-180" : ""}`} /></button>
+        {confirmDel ? (
+          <div className="flex items-center gap-1">
+            <span className="hidden text-xs font-semibold text-red-500 sm:inline">Remover?</span>
+            <button onClick={() => { setConfirmDel(false); onRemove(); }} title={`Remover ${participant.name} e todos os palpites`} className="grid h-8 w-8 place-items-center rounded-lg bg-red-500/15 text-red-500 hover:bg-red-500/25"><Check size={14} /></button>
+            <button onClick={() => setConfirmDel(false)} aria-label="Cancelar remoção" className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-ink-400 hover:text-ink-900 dark:hover:text-ink-100"><X size={14} /></button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmDel(true)} aria-label={`Remover ${participant.name}`} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-ink-400 hover:text-red-500"><Trash2 size={14} /></button>
+        )}
       </div>
 
       {open && (
@@ -295,10 +341,12 @@ function ParticipantEditor({
                 🙅 NÃO será <span className="text-[11px] font-normal text-ink-400">(+5 se acertar)</span>
               </button>
             </div>
-            <div className="mt-1.5 flex h-4 items-center gap-1.5 text-[11px]">
+            <div aria-live="polite" className="mt-1.5 flex min-h-[1rem] items-center gap-1.5 text-[11px]">
               {savingPred === "saving" && <span className="inline-flex items-center gap-1 text-ink-400"><Loader2 size={11} className="animate-spin" /> salvando…</span>}
-              {savingPred === "ok" && <span className="inline-flex items-center gap-1 text-pitch-600 dark:text-pitch-300"><Check size={11} /> salvo</span>}
+              {savingPred === "ok" && <span className="inline-flex items-center gap-1 text-pitch-600 dark:text-pitch-300"><Check size={11} /> palpite salvo</span>}
+              {savingPred === "err" && <span className="inline-flex items-center gap-1 font-semibold text-red-500"><X size={11} /> {predError || "Não foi possível salvar."}</span>}
               {savingPred === "idle" && champ == null && <span className="text-ink-400">Toque em SIM ou NÃO para registrar o palpite.</span>}
+              {savingPred === "idle" && champ != null && <span className="text-ink-400">Palpite atual: <b>{champ ? "SIM, campeão" : "NÃO será"}</b>. Toque para alterar.</span>}
             </div>
           </div>
 
@@ -324,7 +372,8 @@ function MatchGuess({ match, current, onSave }: { match: import("@/lib/types").M
   // `dirty` evita gravar 0×0 acidental: o botão Salvar só ativa após o admin
   // mexer nos steppers (ou se já existe um palpite salvo e ele decide reeditar).
   const [dirty, setDirty] = useState(false);
-  const [state, setState] = useState<"idle" | "saving" | "ok">("idle");
+  const [state, setState] = useState<"idle" | "saving" | "ok" | "err">("idle");
+  const [errMsg, setErrMsg] = useState("");
   const locked = isLocked(matchLockEpoch(match.id));
   const hasSaved = !!current;
   useEffect(() => {
@@ -332,12 +381,13 @@ function MatchGuess({ match, current, onSave }: { match: import("@/lib/types").M
     setA(current?.awayGoals ?? 0);
     setDirty(false);
   }, [current?.homeGoals, current?.awayGoals]);
-  const bump = (setter: (v: number) => void, v: number) => { setter(v); setDirty(true); };
+  const bump = (setter: (v: number) => void, v: number) => { setter(v); setDirty(true); if (state === "err") setState("idle"); };
   const canSave = dirty && !locked;
   const save = async () => {
     if (!canSave) return;
-    setState("saving");
-    try { await onSave(h, a); setState("ok"); setDirty(false); setTimeout(() => setState("idle"), 1200); } catch { setState("idle"); }
+    setState("saving"); setErrMsg("");
+    try { await onSave(h, a); setState("ok"); setDirty(false); setTimeout(() => setState((s) => (s === "ok" ? "idle" : s)), 1500); }
+    catch (e) { setState("err"); setErrMsg(e instanceof Error ? e.message : "Falha ao salvar."); }
   };
   return (
     <div className={`flex items-center gap-2 rounded-lg bg-[var(--bg-elevated)] px-2 py-1.5 text-sm ${locked ? "opacity-70" : ""}`}>
@@ -359,14 +409,19 @@ function MatchGuess({ match, current, onSave }: { match: import("@/lib/types").M
           <Check size={12} /> salvo
         </span>
       ) : (
-        <button
-          onClick={save}
-          disabled={state === "saving" || !canSave}
-          title={!canSave ? "Toque nos botões + ou − para palpitar" : undefined}
-          className="ml-auto inline-flex items-center gap-1 rounded-lg bg-pitch-500/15 px-2 py-1 text-xs font-bold text-pitch-600 disabled:opacity-40 dark:text-pitch-300"
-        >
-          {state === "saving" ? <Loader2 size={12} className="animate-spin" /> : state === "ok" ? <Check size={12} /> : <Save size={12} />} {state === "ok" ? "" : "Salvar"}
-        </button>
+        <div className="ml-auto flex items-center gap-1.5">
+          {state === "err" && (
+            <span aria-live="polite" title={errMsg} className="inline-flex items-center gap-1 text-xs font-semibold text-red-500"><X size={12} /> erro</span>
+          )}
+          <button
+            onClick={save}
+            disabled={state === "saving" || !canSave}
+            title={state === "err" ? errMsg : !canSave ? "Toque nos botões + ou − para palpitar" : undefined}
+            className="inline-flex items-center gap-1 rounded-lg bg-pitch-500/15 px-2 py-1 text-xs font-bold text-pitch-600 disabled:opacity-40 dark:text-pitch-300"
+          >
+            {state === "saving" ? <Loader2 size={12} className="animate-spin" /> : state === "ok" ? <Check size={12} /> : <Save size={12} />} {state === "ok" ? "" : state === "err" ? "Tentar de novo" : "Salvar"}
+          </button>
+        </div>
       )}
     </div>
   );

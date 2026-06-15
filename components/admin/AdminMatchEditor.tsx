@@ -62,6 +62,8 @@ export function AdminMatchEditor({
   const [evPlayer, setEvPlayer] = useState<Player | null>(null);
   const [evAssist, setEvAssist] = useState<Player | null>(null);
   const [evMin, setEvMin] = useState("");
+  const [evMsg, setEvMsg] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Quem marcou: em gol-contra é um jogador do time adversário; nos demais
   // casos, do próprio lado. A assistência é sempre do lado escolhido.
@@ -105,8 +107,12 @@ export function AdminMatchEditor({
   const isDraw = knockout && hg === ag;
 
   const addEvent = () => {
+    if (!evPlayer) { setEvMsg("Selecione o jogador."); return; }
+    if (evMin.trim() === "") { setEvMsg("Informe o minuto."); return; }
     const minute = parseInt(evMin, 10);
-    if (!evPlayer || isNaN(minute) || !evScorerTeam) return;
+    if (isNaN(minute) || minute < 0 || minute > 130) { setEvMsg("Minuto inválido (0–130)."); return; }
+    if (!evScorerTeam) { setEvMsg("Time inválido."); return; }
+    setEvMsg("");
     setEvs((l) =>
       [...l, {
         minute,
@@ -218,17 +224,17 @@ export function AdminMatchEditor({
           </ul>
         )}
         <div className="flex flex-wrap items-center gap-1.5">
-          <select value={evSide} onChange={(e) => setEvSide(e.target.value as "home" | "away")} className="rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-1.5 py-1 text-xs">
+          <select aria-label="Time do lance" value={evSide} onChange={(e) => setEvSide(e.target.value as "home" | "away")} className="rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-1.5 py-1 text-xs">
             <option value="home">{home.code}</option>
             <option value="away">{away.code}</option>
           </select>
-          <select value={evType} onChange={(e) => setEvType(e.target.value)} className="rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-1.5 py-1 text-xs">
+          <select aria-label="Tipo de lance" value={evType} onChange={(e) => setEvType(e.target.value)} className="rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-1.5 py-1 text-xs">
             {EVENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
           <PlayerSelect
             teamCode={evScorerTeam}
             value={evPlayer?.id ?? null}
-            onChange={setEvPlayer}
+            onChange={(p) => { setEvPlayer(p); if (evMsg) setEvMsg(""); }}
             placeholder={evType === "amarelo" || evType === "vermelho" ? "Jogador" : "Autor do gol"}
           />
           {(evType === "gol" || evType === "penalti") && (
@@ -239,16 +245,29 @@ export function AdminMatchEditor({
               placeholder="Assistência (opc.)"
             />
           )}
-          <input value={evMin} onChange={(e) => setEvMin(e.target.value)} placeholder="min" inputMode="numeric" className="w-12 rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-xs" />
+          <input aria-label="Minuto do lance" value={evMin} onChange={(e) => { setEvMin(e.target.value); if (evMsg) setEvMsg(""); }} placeholder="min" inputMode="numeric" maxLength={3} className="w-12 rounded border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-xs" />
           <button onClick={addEvent} className="rounded-lg bg-pitch-500/15 px-2 py-1 text-xs font-bold text-pitch-600 dark:text-pitch-300">+ add</button>
+          <span aria-live="polite" className="text-[11px] font-semibold text-red-500">{evMsg}</span>
         </div>
       </div>
 
       <div className="mt-2 flex items-center justify-end gap-2">
-        {msg && <span className={`text-xs ${state === "err" ? "text-red-500" : "text-pitch-600 dark:text-pitch-300"}`}>{msg}</span>}
-        <button onClick={clear} className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-bold text-ink-400 hover:text-red-500">
-          <Trash2 size={13} /> Limpar
-        </button>
+        <span aria-live="polite" className={`text-xs ${state === "err" ? "text-red-500" : "text-pitch-600 dark:text-pitch-300"}`}>{msg}</span>
+        {confirmClear ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-red-500">Apagar o placar?</span>
+            <button onClick={() => { setConfirmClear(false); clear(); }} className="inline-flex items-center gap-1 rounded-lg bg-red-500/15 px-2.5 py-1.5 text-xs font-bold text-red-500 hover:bg-red-500/25">
+              <Check size={13} /> Sim
+            </button>
+            <button onClick={() => setConfirmClear(false)} className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-bold text-ink-400">
+              Não
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmClear(true)} className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-bold text-ink-400 hover:text-red-500">
+            <Trash2 size={13} /> Limpar
+          </button>
+        )}
         <button onClick={save} disabled={state === "saving"} className="inline-flex items-center gap-1.5 rounded-lg gradient-pitch px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">
           {state === "saving" ? <Loader2 size={13} className="animate-spin" /> : state === "ok" ? <Check size={13} /> : <Save size={13} />}
           Salvar
