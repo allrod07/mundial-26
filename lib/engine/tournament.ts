@@ -146,27 +146,56 @@ function resolveGroupMatch(
   m.status = "agendado";
 }
 
-function resolveSource(
-  s: SlotSource,
-  side: "home" | "away",
-  matchId: string,
-  standings: Record<string, StandingRow[]>,
-  thirdAssignment: Record<string, string>,
-  groupDone: Record<string, boolean>,
-  matchMap: Record<string, Match>,
-): string | undefined {
+interface SourceCtx {
+  standings: Record<string, StandingRow[]>;
+  thirdAssignment: Record<string, string>;
+  provThirdAssignment: Record<string, string>;
+  groupDone: Record<string, boolean>;
+  groupHasPlayed: Record<string, boolean>;
+  matchMap: Record<string, Match>;
+  provisional: boolean;
+}
+
+interface ResolvedSlot {
+  code?: string;
+  prov: boolean;
+}
+
+/**
+ * Resolve a bracket slot to a team. With `provisional` enabled, reveals the
+ * CURRENT leaders/best-thirds even before a group/phase is mathematically
+ * decided, flagging them as provisional so the UI can mark them as "ao vivo".
+ */
+function resolveSource(s: SlotSource, side: "home" | "away", matchId: string, ctx: SourceCtx): ResolvedSlot {
   switch (s.type) {
-    case "group":
-      return groupDone[s.group] ? standings[s.group][s.rank - 1]?.teamCode : undefined;
-    case "third":
-      return thirdAssignment[`${matchId}:${side}`];
+    case "group": {
+      if (ctx.groupDone[s.group]) return { code: ctx.standings[s.group][s.rank - 1]?.teamCode, prov: false };
+      if (ctx.provisional && ctx.groupHasPlayed[s.group])
+        return { code: ctx.standings[s.group][s.rank - 1]?.teamCode, prov: true };
+      return { code: undefined, prov: false };
+    }
+    case "third": {
+      const def = ctx.thirdAssignment[`${matchId}:${side}`];
+      if (def) return { code: def, prov: false };
+      if (ctx.provisional) {
+        const p = ctx.provThirdAssignment[`${matchId}:${side}`];
+        if (p) return { code: p, prov: true };
+      }
+      return { code: undefined, prov: false };
+    }
     case "winner": {
-      const fm = matchMap[s.matchId];
-      return fm && fm.status === "encerrado" ? winnerOf(fm) ?? undefined : undefined;
+      const fm = ctx.matchMap[s.matchId];
+      if (!fm || fm.status !== "encerrado") return { code: undefined, prov: false };
+      const code = winnerOf(fm) ?? undefined;
+      const prov = code === fm.homeCode ? !!fm.homeProvisional : code === fm.awayCode ? !!fm.awayProvisional : false;
+      return { code, prov };
     }
     case "loser": {
-      const fm = matchMap[s.matchId];
-      return fm && fm.status === "encerrado" ? loserOf(fm) ?? undefined : undefined;
+      const fm = ctx.matchMap[s.matchId];
+      if (!fm || fm.status !== "encerrado") return { code: undefined, prov: false };
+      const code = loserOf(fm) ?? undefined;
+      const prov = code === fm.homeCode ? !!fm.homeProvisional : code === fm.awayCode ? !!fm.awayProvisional : false;
+      return { code, prov };
     }
   }
 }
@@ -198,11 +227,18 @@ function resolveKoResult(
 
 export function buildTournament(
   overrides: MatchResultMap = {},
-  opts: { fabricate?: boolean; events?: Record<string, MatchEvent[]>; fabricateEvents?: boolean } = {},
+  opts: {
+    fabricate?: boolean;
+    events?: Record<string, MatchEvent[]>;
+    fabricateEvents?: boolean;
+    /** reveal current leaders/best-thirds before groups finish (live bracket) */
+    provisional?: boolean;
+  } = {},
 ): ResolvedTournament {
   const fabricate = opts.fabricate ?? false;
   const providedEvents = opts.events;
   const fabricateEvents = opts.fabricateEvents ?? fabricate;
+  const provisional = opts.provisional ?? false;
   const matches: Match[] = BASE_MATCHES.map((m) => ({ ...m, events: [] }));
   const matchMap: Record<string, Match> = Object.fromEntries(matches.map((m) => [m.id, m]));
 
@@ -215,22 +251,49 @@ export function buildTournament(
   const thirdsQualified = thirds.filter((t) => t.qualified);
   const groupComplete = isGroupStageComplete(matches);
   const groupDone: Record<string, boolean> = {};
+  const groupHasPlayed: Record<string, boolean> = {};
   for (const g of Object.keys(standings)) {
-    groupDone[g] = matches
-      .filter((m) => m.group === g)
-      .every((m) => m.status === "encerrado");
+    const gm = matches.filter((m) => m.group === g);
+    groupDone[g] = gm.every((m) => m.status === "encerrado");
+    groupHasPlayed[g] = gm.some((m) => m.status === "encerrado");
   }
 
   const thirdAssignment = groupComplete
     ? assignThirdSlots(thirdsQualified.map((r) => ({ teamCode: r.teamCode, group: r.group })))
     : {};
 
+  // provisional best-thirds: rank only the thirds whose group has already
+  // started, then assign the current top 8 to bracket slots (may shift live).
+  const provThirdAssignment =
+    provisional && !groupComplete
+      ? assignThirdSlots(
+          thirds
+            .filter((r) => groupHasPlayed[r.group])
+            .slice(0, 8)
+            .map((r) => ({ teamCode: r.teamCode, group: r.group })),
+        )
+      : {};
+
+  const ctx: SourceCtx = {
+    standings,
+    thirdAssignment,
+    provThirdAssignment,
+    groupDone,
+    groupHasPlayed,
+    matchMap,
+    provisional,
+  };
+
   // knockout — KO_DEFS is topologically ordered (feeders before consumers)
   for (const def of KO_DEFS) {
     const m = matchMap[def.id];
     const src = KO_SOURCES[def.id];
-    m.homeCode = resolveSource(src.home, "home", def.id, standings, thirdAssignment, groupDone, matchMap);
-    m.awayCode = resolveSource(src.away, "away", def.id, standings, thirdAssignment, groupDone, matchMap);
+    const h = resolveSource(src.home, "home", def.id, ctx);
+    const a = resolveSource(src.away, "away", def.id, ctx);
+    m.homeCode = h.code;
+    m.awayCode = a.code;
+    m.homeProvisional = h.prov || undefined;
+    m.awayProvisional = a.prov || undefined;
     resolveKoResult(m, overrides, providedEvents, fabricateEvents);
   }
 

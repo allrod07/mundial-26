@@ -19,10 +19,13 @@ export function GroupTable({
   group,
   rows,
   compact = false,
+  provisional = false,
 }: {
   group: string;
   rows: StandingRow[];
   compact?: boolean;
+  /** grupo ainda em andamento — ordem/classificação é parcial */
+  provisional?: boolean;
 }) {
   return (
     <div className="surface overflow-hidden rounded-2xl">
@@ -33,7 +36,13 @@ export function GroupTable({
           </span>
           Grupo {group}
         </h3>
-        <span className="text-[11px] text-ink-400">Pts</span>
+        {provisional ? (
+          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300" title="Grupo em andamento — classificação parcial">
+            parcial
+          </span>
+        ) : (
+          <span className="text-[11px] text-ink-400">Pts</span>
+        )}
       </div>
       <table className="w-full text-sm">
         <thead>

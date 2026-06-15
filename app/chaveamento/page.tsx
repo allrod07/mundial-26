@@ -11,7 +11,7 @@ import { winnerOf } from "@/lib/engine/simulate";
 import { motion } from "framer-motion";
 
 export default function ChaveamentoPage() {
-  const { tournament } = useTournament();
+  const { liveTournament: tournament } = useTournament();
   const final = tournament.matchMap["FINAL"];
   const champion = final?.status === "encerrado" ? winnerOf(final) : null;
   const championTeam = champion ? TEAM_MAP[champion] : null;
@@ -22,7 +22,7 @@ export default function ChaveamentoPage() {
         eyebrow="Mata-mata"
         icon={<GitMerge size={24} />}
         title="Chaveamento"
-        description="Do 16-avos de final à decisão do título. O chaveamento oficial se preenche conforme os grupos terminam e os confrontos reais são definidos."
+        description="Do 16-avos de final à decisão do título. Os confrontos se preenchem ao vivo conforme os placares são registrados."
       />
 
       {championTeam && (
@@ -48,14 +48,19 @@ export default function ChaveamentoPage() {
       )}
 
       {!tournament.groupComplete && (
-        <div className="mt-5 flex items-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-pitch-500/5 px-4 py-3 text-sm text-ink-500">
-          <Info size={16} className="shrink-0 text-pitch-500" />
+        <div className="mt-5 flex items-start gap-2 rounded-2xl border border-dashed border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-ink-500">
+          <Info size={16} className="mt-0.5 shrink-0 text-amber-500" />
           <span>
-            Os confrontos do mata-mata se preenchem aqui conforme a fase de grupos real termina. Para testar cenários, use o{" "}
+            Enquanto a fase de grupos não termina, os confrontos aparecem com a
+            classificação <b>provisória</b> (marcada com{" "}
+            <span className="rounded bg-amber-500/15 px-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300">prov</span>
+            ) e mudam a cada novo placar. Eles se consolidam quando cada grupo
+            fecha — e os 8 melhores 3ºs, quando todos os grupos terminam. Para
+            testar cenários hipotéticos, use o{" "}
             <Link href="/simulador" className="font-semibold text-pitch-600 hover:underline dark:text-pitch-300">
               simulador
-            </Link>{" "}
-            — lá você projeta o chaveamento sem afetar esta página.
+            </Link>
+            .
           </span>
         </div>
       )}
