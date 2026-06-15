@@ -14,6 +14,7 @@ import { MatchCard } from "@/components/match/MatchCard";
 import { Flag } from "@/components/ui/Flag";
 import { Badge } from "@/components/ui/Badge";
 import { FavoriteButton } from "@/components/ui/FavoriteButton";
+import { ShareButton } from "@/components/ui/ShareButton";
 import { fmtMoney } from "@/lib/format";
 
 export function generateStaticParams() {
@@ -88,8 +89,9 @@ export default function TeamPage({ params }: { params: { code: string } }) {
               <span className="chip bg-white/15 text-white"><Star size={12} /> Capitão: {captain.name}</span>
             </div>
           </div>
-          <div className="flex sm:flex-col sm:items-end">
+          <div className="flex items-center gap-2 sm:flex-col sm:items-end">
             <FavoriteButton kind="team" id={team.code} size={22} className="bg-white/15 text-white hover:bg-white/25" />
+            <ShareButton title={`${team.name} — Mundial '26`} className="border-white/25 bg-white/15 text-white hover:bg-white/25 hover:text-white" />
           </div>
         </div>
       </div>

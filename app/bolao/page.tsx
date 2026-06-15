@@ -13,6 +13,7 @@ import {
   type PoolData, type PoolResult, type BadgeKey,
 } from "@/lib/engine/pool";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ShareButton } from "@/components/ui/ShareButton";
 import { Card } from "@/components/ui/Card";
 import { Flag } from "@/components/ui/Flag";
 import { PoolEvolutionChart } from "@/components/pool/PoolEvolutionChart";
@@ -88,6 +89,7 @@ export default function BolaoPage() {
             <Link href="/admin/bolao" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-bold text-ink-500 transition-colors hover:border-pitch-500/40 hover:text-pitch-600 dark:hover:text-pitch-300">
               <Settings size={15} /> Administrar
             </Link>
+            <ShareButton title="Bolão da Família — Mundial '26" text="Entra no nosso bolão da Copa!" className="px-4 py-2.5 hover:border-pitch-500/40 dark:hover:text-pitch-300" />
           </div>
         }
       />
