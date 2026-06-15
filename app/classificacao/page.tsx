@@ -31,12 +31,18 @@ export default function ClassificacaoPage() {
         <span className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded bg-gold-500/40" /> Melhor 3º (8 vagas)
         </span>
+        {!tournament.groupComplete && (
+          <span className="flex items-center gap-1.5">
+            <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300">parcial</span>{" "}
+            Grupo em andamento — posições mudam a cada jogo
+          </span>
+        )}
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {GROUPS.map((g) => (
           <Reveal key={g}>
-            <GroupTable group={g} rows={tournament.standings[g]} />
+            <GroupTable group={g} rows={tournament.standings[g]} provisional={!tournament.groupDone[g]} />
           </Reveal>
         ))}
       </div>
@@ -94,10 +100,16 @@ export default function ClassificacaoPage() {
                     </td>
                     <td className="hidden py-3 text-center tabular text-ink-500 sm:table-cell">{r.gf}</td>
                     <td className="py-3 pr-4 text-right">
-                      {r.qualified ? (
-                        <Badge tone="pitch">Classificado</Badge>
+                      {tournament.groupComplete ? (
+                        r.qualified ? (
+                          <Badge tone="pitch">Classificado</Badge>
+                        ) : (
+                          <Badge tone="ink">Eliminado</Badge>
+                        )
+                      ) : r.qualified ? (
+                        <Badge tone="gold">Na zona (parcial)</Badge>
                       ) : (
-                        <Badge tone="ink">Eliminado</Badge>
+                        <Badge tone="ink">Fora (parcial)</Badge>
                       )}
                     </td>
                   </tr>
@@ -108,12 +120,13 @@ export default function ClassificacaoPage() {
         </div>
         {!tournament.groupComplete && (
           <p className="mt-3 flex items-center gap-1.5 px-1 text-xs text-ink-400">
-            <Info size={13} /> A ordenação dos terceiros se consolida quando todos os
-            grupos terminarem. Use o{" "}
-            <Link href="/simulador" className="font-semibold text-pitch-600 hover:underline dark:text-pitch-300">
-              simulador
-            </Link>{" "}
-            para completar a fase de grupos.
+            <Info size={13} /> Classificação <b>parcial</b>: atualiza a cada placar e
+            só se consolida quando todos os grupos terminarem. Acompanhe os
+            confrontos provisórios no{" "}
+            <Link href="/chaveamento" className="font-semibold text-pitch-600 hover:underline dark:text-pitch-300">
+              chaveamento
+            </Link>
+            .
           </p>
         )}
       </section>

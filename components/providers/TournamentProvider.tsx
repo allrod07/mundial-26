@@ -22,6 +22,9 @@ const STORAGE_KEY = "mundial26:sim";
 interface TournamentCtx {
   /** Mundo REAL: só resultados oficiais (Supabase). Imune ao simulador. */
   tournament: ResolvedTournament;
+  /** Mundo REAL com chaveamento PROVISÓRIO ao vivo: revela líderes e melhores
+   * 3ºs parciais antes dos grupos fecharem (podem mudar a cada placar). */
+  liveTournament: ResolvedTournament;
   /** Simulador: realidade atual + palpites do usuário (localStorage). */
   simTournament: ResolvedTournament;
   overrides: MatchResultMap;
@@ -119,6 +122,22 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     return BASE_TOURNAMENT;
   }, [isLive, live]);
 
+  // ── Mundo REAL com chaveamento provisório ──────────────────────────────────
+  // Mesmos resultados oficiais do `tournament`, mas o mata-mata se preenche ao
+  // vivo com os classificados ATUAIS (1º/2º e melhores 3ºs parciais). Usado na
+  // tela de chaveamento para refletir cada placar registrado em tempo real.
+  const liveTournament = useMemo<ResolvedTournament>(() => {
+    if (isLive) {
+      return buildTournament(live!.results, {
+        fabricate: false,
+        events: live!.events,
+        fabricateEvents: false,
+        provisional: true,
+      });
+    }
+    return BASE_TOURNAMENT;
+  }, [isLive, live]);
+
   // ── Simulador ─────────────────────────────────────────────────────────────
   // Parte da realidade atual e aplica por cima os palpites do usuário. Usado
   // SOMENTE na tela do simulador — não vaza para as páginas de informação.
@@ -137,6 +156,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
   const value = useMemo<TournamentCtx>(
     () => ({
       tournament,
+      liveTournament,
       simTournament,
       overrides,
       isSimulated: Object.keys(overrides).length > 0,
@@ -159,7 +179,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       simulateAll: () => setOverrides((o) => simulateRemainder(o)),
       resetAll: () => setOverrides({}),
     }),
-    [tournament, simTournament, overrides, hydrated, isLive, live],
+    [tournament, liveTournament, simTournament, overrides, hydrated, isLive, live],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
