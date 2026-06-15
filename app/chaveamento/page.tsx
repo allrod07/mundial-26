@@ -5,6 +5,7 @@ import { GitMerge, Trophy, Info } from "lucide-react";
 import { useTournament } from "@/components/providers/TournamentProvider";
 import { Bracket } from "@/components/bracket/Bracket";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ShareButton } from "@/components/ui/ShareButton";
 import { Flag } from "@/components/ui/Flag";
 import { TEAM_MAP } from "@/lib/data/teams";
 import { winnerOf } from "@/lib/engine/simulate";
@@ -23,6 +24,7 @@ export default function ChaveamentoPage() {
         icon={<GitMerge size={24} />}
         title="Chaveamento"
         description="Do 16-avos de final à decisão do título. Os confrontos se preenchem ao vivo conforme os placares são registrados."
+        action={<ShareButton title="Chaveamento — Mundial '26" />}
       />
 
       {championTeam && (

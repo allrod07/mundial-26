@@ -16,6 +16,7 @@ import { Pitch } from "@/components/match/Pitch";
 import { Flag } from "@/components/ui/Flag";
 import { Badge, LiveBadge } from "@/components/ui/Badge";
 import { FavoriteButton } from "@/components/ui/FavoriteButton";
+import { ShareButton } from "@/components/ui/ShareButton";
 import { VersusBar } from "@/components/ui/StatBar";
 import { Tabs } from "@/components/ui/Tabs";
 import { Select } from "@/components/ui/Select";
@@ -96,6 +97,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
             <Badge tone={match.stage === "Grupos" ? "ink" : "gold"}>{stageLabel}</Badge>
             <div className="flex items-center gap-2">
               {live ? <LiveBadge minute={match.minute} /> : decided ? <Badge tone="pitch">Encerrado</Badge> : <Badge tone="ink"><Clock size={11} /> {fmtKickoff(match.date, match.cityId, tz)}</Badge>}
+              <ShareButton label="" title={`${home?.name ?? match.homeLabel ?? ""} x ${away?.name ?? match.awayLabel ?? ""} — Mundial '26`} className="px-2.5 py-1.5" />
               <FavoriteButton kind="match" id={match.id} size={18} />
             </div>
           </div>
