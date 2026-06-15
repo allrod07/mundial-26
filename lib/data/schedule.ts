@@ -1,5 +1,6 @@
 import type { Match, Stage } from "@/lib/types";
 import { CITIES } from "@/lib/data/cities";
+import { OFFICIAL_THIRD_TABLE, THIRD_COLUMN_ORDER } from "@/lib/data/thirdsAllocation";
 
 // ── Demo clock ───────────────────────────────────────────────────────────────
 // Pinned to the middle of the group stage so the platform is alive: finished
@@ -194,8 +195,51 @@ export const THIRD_SLOTS: ThirdSlot[] = KO_DEFS.flatMap((d) => {
   return out;
 });
 
-/** Greedily assign the qualified thirds (best-first) to the bracket's third slots. */
+/**
+ * Allocate the qualified third-placed teams to their round-of-32 slots.
+ *
+ * Quando há exatamente os 8 terceiros classificados (cenário definitivo), usa a
+ * TABELA OFICIAL da FIFA (495 combinações) — a alocação depende apenas de QUAIS
+ * 8 grupos avançam, não do ranking. No cenário provisório/incompleto (menos de
+ * 8 terceiros conhecidos), cai para uma atribuição gulosa aproximada.
+ */
 export function assignThirdSlots(
+  qualified: { teamCode: string; group: string }[],
+): Record<string, string> {
+  if (qualified.length === 8) {
+    const groups = qualified.map((q) => q.group);
+    if (new Set(groups).size === 8) {
+      const key = [...groups].sort().join("");
+      const row = OFFICIAL_THIRD_TABLE[key];
+      if (row) {
+        const teamByGroup: Record<string, string> = {};
+        for (const q of qualified) teamByGroup[q.group] = q.teamCode;
+        const out: Record<string, string> = {};
+        for (let i = 0; i < THIRD_COLUMN_ORDER.length; i++) {
+          const team = teamByGroup[row[i]];
+          if (team) out[THIRD_COL_TO_SLOT[THIRD_COLUMN_ORDER[i]]] = team;
+        }
+        return out;
+      }
+    }
+  }
+  return greedyThirdSlots(qualified);
+}
+
+/** Coluna da tabela oficial (1º colocado anfitrião) → vaga (matchId:side). */
+const THIRD_COL_TO_SLOT: Record<string, string> = {
+  "1A": "R32-7:away",
+  "1B": "R32-15:away",
+  "1D": "R32-11:away",
+  "1E": "R32-1:away",
+  "1G": "R32-12:away",
+  "1I": "R32-2:away",
+  "1K": "R32-16:away",
+  "1L": "R32-8:away",
+};
+
+/** Fallback guloso — só para cenários incompletos (chaveamento provisório). */
+function greedyThirdSlots(
   qualified: { teamCode: string; group: string }[],
 ): Record<string, string> {
   const used = new Set<string>();
