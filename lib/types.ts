@@ -133,6 +133,10 @@ export interface Match {
   /** bracket wiring */
   bracketSlot?: number; // 1..16 for R32 ordering
   feedsInto?: { matchId: string; slot: "home" | "away" };
+  /** true when the team in the slot comes from a still-undecided group/phase
+   * (live "provisional" bracket) — may change as more results come in */
+  homeProvisional?: boolean;
+  awayProvisional?: boolean;
 }
 
 export interface StandingRow {

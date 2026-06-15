@@ -19,11 +19,13 @@ function BracketSide({
   label,
   isWinner,
   decided,
+  provisional,
 }: {
   code?: string;
   label?: string;
   isWinner: boolean;
   decided: boolean;
+  provisional?: boolean;
 }) {
   const team = code ? TEAM_MAP[code] : undefined;
   return (
@@ -32,15 +34,21 @@ function BracketSide({
         "flex items-center gap-2 px-2.5 py-1.5",
         decided && !isWinner && "opacity-45",
       )}
+      title={provisional ? "Classificação provisória — pode mudar conforme os jogos" : undefined}
     >
       {team ? (
         <Flag code={code} size="xs" />
       ) : (
         <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-ink-500/10 text-[9px]">?</span>
       )}
-      <span className="truncate text-xs font-semibold">
+      <span className={cn("truncate text-xs font-semibold", provisional && "italic text-ink-500 dark:text-ink-300")}>
         {team?.name ?? label ?? "A definir"}
       </span>
+      {provisional && (
+        <span className="shrink-0 rounded bg-amber-500/15 px-1 text-[8px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300">
+          prov
+        </span>
+      )}
       {isWinner && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-pitch-500" />}
     </div>
   );
@@ -63,11 +71,11 @@ function BracketMatch({ match, big }: { match?: Match; big?: boolean }) {
       <div className="flex items-stretch">
         <div className="min-w-0 flex-1 divide-y divide-[var(--border)]">
           <div className="flex items-center justify-between">
-            <BracketSide code={match.homeCode} label={match.homeLabel} isWinner={w === match.homeCode} decided={decided} />
+            <BracketSide code={match.homeCode} label={match.homeLabel} isWinner={w === match.homeCode} decided={decided} provisional={match.homeProvisional} />
             <span className="px-2 stat-num text-sm font-extrabold">{score(match.homeGoals)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <BracketSide code={match.awayCode} label={match.awayLabel} isWinner={w === match.awayCode} decided={decided} />
+            <BracketSide code={match.awayCode} label={match.awayLabel} isWinner={w === match.awayCode} decided={decided} provisional={match.awayProvisional} />
             <span className="px-2 stat-num text-sm font-extrabold">{score(match.awayGoals)}</span>
           </div>
         </div>
