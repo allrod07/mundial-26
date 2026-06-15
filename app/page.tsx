@@ -12,21 +12,20 @@ import { TEAMS, GROUPS } from "@/lib/data/teams";
 import { MatchCard } from "@/components/match/MatchCard";
 import { GroupTable } from "@/components/standings/GroupTable";
 import { ScorersList } from "@/components/stats/ScorersList";
-import { Countdown } from "@/components/home/Countdown";
+import { NextMatchPanel } from "@/components/home/NextMatchPanel";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge, LiveBadge } from "@/components/ui/Badge";
 import { Flag } from "@/components/ui/Flag";
 import { Reveal, Stagger, StaggerItem } from "@/components/ui/Reveal";
 import { CountUp } from "@/components/ui/CountUp";
-import { fmtDay, fmtKickoff, kickoffEpoch } from "@/lib/format";
 import { useTz } from "@/store/useTimezone";
 
 export default function HomePage() {
   const { tournament } = useTournament();
   const tz = useTz();
 
-  const { live, upcoming, recent, nextMatch, totalGoals, played } = useMemo(() => {
+  const { live, upcoming, recent, totalGoals, played } = useMemo(() => {
     const ms = tournament.matches;
     const live = ms.filter((m) => m.status === "ao-vivo");
     const upcoming = ms
@@ -37,7 +36,7 @@ export default function HomePage() {
       .sort((a, b) => +new Date(b.date) - +new Date(a.date));
     const played = recent.length;
     const totalGoals = recent.reduce((s, m) => s + (m.homeGoals ?? 0) + (m.awayGoals ?? 0), 0);
-    return { live, upcoming, recent, nextMatch: upcoming[0], totalGoals, played };
+    return { live, upcoming, recent, totalGoals, played };
   }, [tournament]);
 
   const featured = [...TEAMS].sort((a, b) => b.rating - a.rating).slice(0, 6);
@@ -122,23 +121,7 @@ export default function HomePage() {
               </div>
             ) : null}
 
-            {nextMatch && (
-              <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-md">
-                <div className="mb-1 text-xs font-bold uppercase tracking-wide text-white/70">
-                  Próxima partida
-                </div>
-                <div className="mb-4 text-sm text-white/80">
-                  {fmtDay(nextMatch.date)} · {fmtKickoff(nextMatch.date, nextMatch.cityId, tz)} <span className="text-white/50">(Brasília)</span>
-                </div>
-                <HeroMatch
-                  matchCodes={[nextMatch.homeCode, nextMatch.awayCode]}
-                  labels={[nextMatch.homeLabel, nextMatch.awayLabel]}
-                />
-                <div className="mt-5 border-t border-white/15 pt-4">
-                  <Countdown targetMs={kickoffEpoch(nextMatch.date, nextMatch.cityId)} />
-                </div>
-              </div>
-            )}
+            <NextMatchPanel matches={upcoming} tz={tz} />
           </motion.div>
         </div>
       </section>
