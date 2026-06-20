@@ -110,6 +110,8 @@ export interface MatchEvent {
 export interface Match {
   id: string;
   stage: Stage;
+  /** número oficial da partida na tabela da FIFA (1..104) */
+  matchNo?: number;
   group?: string; // A..L for group stage
   /** matchday within group stage (1..3) */
   round?: number;

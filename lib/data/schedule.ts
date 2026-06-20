@@ -1,5 +1,4 @@
 import type { Match, Stage } from "@/lib/types";
-import { CITIES } from "@/lib/data/cities";
 import { OFFICIAL_THIRD_TABLE, THIRD_COLUMN_ORDER } from "@/lib/data/thirdsAllocation";
 
 // ── Demo clock ───────────────────────────────────────────────────────────────
@@ -107,6 +106,7 @@ function buildGroupMatches(): Match[] {
   return GROUP_FIXTURES.map(([num, home, away, group, date, hour, minute, cityId]) => ({
     id: `G-${num}`,
     stage: "Grupos" as const,
+    matchNo: num,
     group,
     round: groupMatchday(num),
     date: iso(date, hour, minute),
@@ -172,8 +172,11 @@ export const KO_DEFS: KoDef[] = [
   { id: "QF-3", stage: "Quartas", home: w("R16-5"), away: w("R16-6") },
   { id: "QF-4", stage: "Quartas", home: w("R16-7"), away: w("R16-8") },
 
-  { id: "SF-1", stage: "Semifinal", home: w("QF-1"), away: w("QF-2") },
-  { id: "SF-2", stage: "Semifinal", home: w("QF-3"), away: w("QF-4") },
+  // Cruzamento OFICIAL das metades do chaveamento (jogos 101 e 102): a SF1 junta
+  // os vencedores das quartas 97 (QF-1) e 98 (QF-3); a SF2, das quartas 99 (QF-2)
+  // e 100 (QF-4). Ver KO_SCHEDULE para o nº oficial de cada partida.
+  { id: "SF-1", stage: "Semifinal", home: w("QF-1"), away: w("QF-3") },
+  { id: "SF-2", stage: "Semifinal", home: w("QF-2"), away: w("QF-4") },
 
   { id: "TP", stage: "Disputa de 3º", home: l("SF-1"), away: l("SF-2") },
   { id: "FINAL", stage: "Final", home: w("SF-1"), away: w("SF-2") },
@@ -269,33 +272,71 @@ export function labelForSource(s: SlotSource): string {
   }
 }
 
-const KO_DATES: Record<Stage, string[]> = {
-  Grupos: [],
-  "16-avos": ["2026-06-28", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03"],
-  Oitavas: ["2026-07-04", "2026-07-05", "2026-07-06", "2026-07-07"],
-  Quartas: ["2026-07-09", "2026-07-10", "2026-07-11", "2026-07-11"],
-  Semifinal: ["2026-07-14", "2026-07-15"],
-  "Disputa de 3º": ["2026-07-18"],
-  Final: ["2026-07-19"],
+// ── Cronograma OFICIAL do mata-mata (FIFA World Cup 2026, schedule v17) ────────
+// Cada confronto do bracket (KO_DEFS) recebe o nº oficial da partida, a sede e o
+// horário. A tabela oficial publica TODOS os horários em ET (Eastern Time); aqui
+// já estão convertidos para o horário LOCAL de cada sede — mesma convenção da
+// fase de grupos. A conversão ET → local subtrai o offset da sede (Pacífico −3,
+// México −2, Central −1, Leste 0); o app converte para Brasília via fmtKickoff
+// (BRT = local + BRT_DELTA, ou seja, sempre ET+1).
+interface KoSchedule {
+  matchNo: number;
+  date: string; // YYYY-MM-DD
+  hour: number; // horário LOCAL da sede (24h)
+  minute: number;
+  cityId: string;
+}
+
+const KO_SCHEDULE: Record<string, KoSchedule> = {
+  // 16-avos (Round of 32) — 28/jun a 3/jul
+  "R32-1": { matchNo: 74, date: "2026-06-29", hour: 16, minute: 30, cityId: "bos" },
+  "R32-2": { matchNo: 77, date: "2026-06-30", hour: 17, minute: 0, cityId: "nyc" },
+  "R32-3": { matchNo: 73, date: "2026-06-28", hour: 12, minute: 0, cityId: "la" },
+  "R32-4": { matchNo: 75, date: "2026-06-29", hour: 19, minute: 0, cityId: "mty" },
+  "R32-5": { matchNo: 76, date: "2026-06-29", hour: 12, minute: 0, cityId: "hou" },
+  "R32-6": { matchNo: 78, date: "2026-06-30", hour: 12, minute: 0, cityId: "dal" },
+  "R32-7": { matchNo: 79, date: "2026-06-30", hour: 19, minute: 0, cityId: "mex" },
+  "R32-8": { matchNo: 80, date: "2026-07-01", hour: 12, minute: 0, cityId: "atl" },
+  "R32-9": { matchNo: 83, date: "2026-07-02", hour: 19, minute: 0, cityId: "tor" },
+  "R32-10": { matchNo: 84, date: "2026-07-02", hour: 12, minute: 0, cityId: "la" },
+  "R32-11": { matchNo: 81, date: "2026-07-01", hour: 17, minute: 0, cityId: "sf" },
+  "R32-12": { matchNo: 82, date: "2026-07-01", hour: 13, minute: 0, cityId: "sea" },
+  "R32-13": { matchNo: 86, date: "2026-07-03", hour: 18, minute: 0, cityId: "mia" },
+  "R32-14": { matchNo: 88, date: "2026-07-03", hour: 13, minute: 0, cityId: "dal" },
+  "R32-15": { matchNo: 85, date: "2026-07-02", hour: 20, minute: 0, cityId: "van" },
+  "R32-16": { matchNo: 87, date: "2026-07-03", hour: 20, minute: 30, cityId: "kc" },
+  // Oitavas (Round of 16) — 4 a 7/jul
+  "R16-1": { matchNo: 89, date: "2026-07-04", hour: 17, minute: 0, cityId: "phi" },
+  "R16-2": { matchNo: 90, date: "2026-07-04", hour: 12, minute: 0, cityId: "hou" },
+  "R16-3": { matchNo: 91, date: "2026-07-05", hour: 16, minute: 0, cityId: "nyc" },
+  "R16-4": { matchNo: 92, date: "2026-07-05", hour: 18, minute: 0, cityId: "mex" },
+  "R16-5": { matchNo: 93, date: "2026-07-06", hour: 14, minute: 0, cityId: "dal" },
+  "R16-6": { matchNo: 94, date: "2026-07-06", hour: 17, minute: 0, cityId: "sea" },
+  "R16-7": { matchNo: 95, date: "2026-07-07", hour: 12, minute: 0, cityId: "atl" },
+  "R16-8": { matchNo: 96, date: "2026-07-07", hour: 13, minute: 0, cityId: "van" },
+  // Quartas de final — 9 a 11/jul
+  "QF-1": { matchNo: 97, date: "2026-07-09", hour: 16, minute: 0, cityId: "bos" },
+  "QF-2": { matchNo: 99, date: "2026-07-11", hour: 17, minute: 0, cityId: "mia" },
+  "QF-3": { matchNo: 98, date: "2026-07-10", hour: 12, minute: 0, cityId: "la" },
+  "QF-4": { matchNo: 100, date: "2026-07-11", hour: 20, minute: 0, cityId: "kc" },
+  // Semifinais — 14 e 15/jul
+  "SF-1": { matchNo: 101, date: "2026-07-14", hour: 14, minute: 0, cityId: "dal" },
+  "SF-2": { matchNo: 102, date: "2026-07-15", hour: 15, minute: 0, cityId: "atl" },
+  // Disputa de 3º lugar — 18/jul
+  TP: { matchNo: 103, date: "2026-07-18", hour: 17, minute: 0, cityId: "mia" },
+  // Final — 19/jul
+  FINAL: { matchNo: 104, date: "2026-07-19", hour: 15, minute: 0, cityId: "nyc" },
 };
 
 function buildKnockoutMatches(): Match[] {
-  const stageCounter: Record<string, number> = {};
-  let koCityIdx = 0;
   return KO_DEFS.map((d) => {
-    const idx = (stageCounter[d.stage] = (stageCounter[d.stage] ?? 0) + 1) - 1;
-    const dates = KO_DATES[d.stage];
-    const day = dates[idx % dates.length];
-    const hour = idx % 2 === 0 ? 19 : 16;
-    const city =
-      d.id === "FINAL"
-        ? CITIES.find((c) => c.id === "nyc")!
-        : CITIES[koCityIdx++ % CITIES.length];
+    const s = KO_SCHEDULE[d.id];
     return {
       id: d.id,
       stage: d.stage,
-      date: iso(day, hour, 0),
-      cityId: city.id,
+      matchNo: s.matchNo,
+      date: iso(s.date, s.hour, s.minute),
+      cityId: s.cityId,
       homeLabel: labelForSource(d.home),
       awayLabel: labelForSource(d.away),
       status: "agendado" as const,
