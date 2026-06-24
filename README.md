@@ -4,6 +4,20 @@ Plataforma web **premium** para acompanhar a Copa do Mundo de 2026 (EUA · Canad
 
 > **Dados oficiais da FIFA**: o sorteio dos 12 grupos, o calendário dos 104 jogos (datas/horários), o chaveamento do mata-mata (incluindo a combinação dos melhores terceiros) e as **convocações reais** das 48 seleções (26 jogadores cada — nome, número, posição, data de nascimento, clube, altura) foram extraídos dos documentos oficiais. Os **rankings de força, valores de mercado e resultados** são estimados/simulados pelo motor de forma determinística. Projeto de demonstração, sem afiliação com a FIFA.
 
+> ⚠️ **Deployment oficial — leia antes de criar/usar outro.**
+> Existe **um** deployment oficial e **um** banco Supabase. Usar outra URL/projeto faz o
+> bolão e os resultados lerem **outro banco** e os dados (palpites, placares) **não
+> aparecem** — não é cache, é banco diferente.
+>
+> - **URL oficial (admin + visualização + compartilhar com a família):**
+>   **https://mundial-2026-beta-lake.vercel.app**
+> - **Projeto Vercel:** `mundial-2026` · **Supabase (ref):** `esysvjajjahdfzbfueii`
+> - **Não** recrie projetos na Vercel a partir deste repo nem use deployments antigos
+>   (ex.: `mundial-26-delta.vercel.app`). Gravação (`/admin`, `/admin/bolao`) e leitura
+>   precisam apontar para o **mesmo** Supabase acima — confira as variáveis
+>   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e
+>   `SUPABASE_SERVICE_ROLE_KEY` no projeto oficial.
+
 ---
 
 ## ✨ Destaques
