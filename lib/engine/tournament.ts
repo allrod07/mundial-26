@@ -29,6 +29,7 @@ import {
   rankThirds,
   isGroupStageComplete,
 } from "@/lib/engine/standings";
+import { kickoffEpoch } from "@/lib/format";
 
 const LIVE_MS = 115 * 60 * 1000;
 
@@ -91,7 +92,12 @@ function resolveGroupMatch(
   providedEvents: Record<string, MatchEvent[]> | undefined,
   fabricateEvents: boolean,
 ) {
-  const kickoff = new Date(m.date).getTime();
+  // Instante REAL do pontapé (considera o fuso da sede), igual ao usado pela
+  // trava de apostas (matchLockEpoch) e pela contagem regressiva da home. Antes
+  // usávamos `new Date(m.date)` cru — o horário guardado é LOCAL da sede, então
+  // comparar direto com NOW marcava o jogo como ao vivo/encerrado horas adiantado
+  // (4h no Leste, até 7h no Pacífico), fechando o palpite do bolão cedo demais.
+  const kickoff = kickoffEpoch(m.date, m.cityId);
   const now = NOW.getTime();
   const ov = overrides[m.id];
 
