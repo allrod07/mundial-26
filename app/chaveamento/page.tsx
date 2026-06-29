@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { GitMerge, Trophy, Info } from "lucide-react";
+import { useState } from "react";
+import { GitMerge, Trophy, Info, CircleDot, Rows3 } from "lucide-react";
 import { useTournament } from "@/components/providers/TournamentProvider";
 import { Bracket } from "@/components/bracket/Bracket";
+import { RadialBracket } from "@/components/bracket/RadialBracket";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ShareButton } from "@/components/ui/ShareButton";
 import { Flag } from "@/components/ui/Flag";
@@ -13,6 +15,7 @@ import { motion } from "framer-motion";
 
 export default function ChaveamentoPage() {
   const { liveTournament: tournament } = useTournament();
+  const [view, setView] = useState<"radial" | "classico">("radial");
   const final = tournament.matchMap["FINAL"];
   const champion = final?.status === "encerrado" ? winnerOf(final) : null;
   const championTeam = champion ? TEAM_MAP[champion] : null;
@@ -67,8 +70,25 @@ export default function ChaveamentoPage() {
         </div>
       )}
 
-      <div className="mt-6 surface rounded-3xl p-5 sm:p-6">
-        <Bracket tournament={tournament} />
+      <div className="mt-5 flex justify-center">
+        <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
+          <button
+            onClick={() => setView("radial")}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-bold transition-colors ${view === "radial" ? "gradient-pitch text-white shadow-sm" : "text-ink-500 hover:text-pitch-600 dark:hover:text-pitch-300"}`}
+          >
+            <CircleDot size={15} /> Radial
+          </button>
+          <button
+            onClick={() => setView("classico")}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-bold transition-colors ${view === "classico" ? "gradient-pitch text-white shadow-sm" : "text-ink-500 hover:text-pitch-600 dark:hover:text-pitch-300"}`}
+          >
+            <Rows3 size={15} /> Clássico
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 surface rounded-3xl p-4 sm:p-6">
+        {view === "radial" ? <RadialBracket tournament={tournament} /> : <Bracket tournament={tournament} />}
       </div>
     </div>
   );
